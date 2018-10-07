@@ -11,6 +11,30 @@ use autodie; # report errors instead of silently continuing ("die" actions are u
 use File::Basename;
 use File::Slurp;
 
+# ABSTRACT: PiFlash functions to inspect Linux system devices to flash an SD card for Raspberry Pi
+
+=head1 SYNOPSIS
+
+ PiFlash::Inspector::collect_system_info();
+ PiFlash::Inspector::collect_file_info();
+ PiFlash::Inspector::collect_device_info();
+ PiFlash::Inspector::blkparam(\%output, param-name, ...);
+ $bool = PiFlash::Inspector::is_sd();
+ $bool = PiFlash::Inspector::is_sd(\%device_info);
+ PiFlash::Inspector::sd_search();
+
+=head1 DESCRIPTION
+
+This class contains internal functions used by L<PiFlash> to gather data about available devices on the system and determine if they are SD card devices.
+
+PiFlash uses this info to refuse to write/destroy a device which is not an SD card. This provides a safeguard while using root permissions against a potential error which has happened where users have accidentally erased the wrong block device, losing a hard drive they wanted to keep.
+
+=head1 SEE ALSO
+
+L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+
+=cut
+
 #
 # class-global variables
 #

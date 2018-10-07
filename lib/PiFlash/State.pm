@@ -15,6 +15,27 @@ use Carp;
 # this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
 package PiFlash::State;
 
+# ABSTRACT: PiFlash::State class to store configuration, device info and program state
+
+=head1 SYNOPSIS
+
+ $bool = PiFlash::State::verbose()
+ PiFlash::State::odump
+ PiFlash::State->error("error message");
+
+=head1 DESCRIPTION
+
+This class contains internal functions used by L<PiFlash> to gather data about available devices on the system and determine if they are SD card devices.
+
+PiFlash uses this info to refuse to write/destroy a device which is not an SD card. This provides a safeguard while using root permissions against a potential error which has happened where users have accidentally erased the wrong block device, losing a hard drive they wanted to keep.
+
+=head1 SEE ALSO
+
+L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+
+=cut
+
+
 # initialize state as empty
 ## no critic (ProhibitPackageVars)
 #BEGIN { $PiFlash::State::state = undef; }

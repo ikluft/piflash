@@ -12,6 +12,26 @@ package PiFlash::Command;
 use autodie;
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
 
+# ABSTRACT: process/command running utilities for piflash
+
+=head1 SYNOPSIS
+
+ PiFlash::Command::cmd( label, command_line)
+ PiFlash::Command::cmd2str( label, comannd_line)
+ PiFlash::Command::prog( "program-name" )
+
+=head1 DESCRIPTION
+
+This class contains internal functions used by L<PiFlash> to run programs and return their status, as well as piping
+their input and output.
+
+=head1 SEE ALSO
+
+L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+
+=cut
+
+
 # fork wrapper function
 # borrowed from Aaron Crane's YAPC::EU 2009 presentation slides online
 sub fork_child {
@@ -181,7 +201,7 @@ sub fork_exec
 }
 
 # run a command
-# usage: run( label, command_line)
+# usage: cmd( label, command_line)
 #   label: a descriptive name of the action this is performing
 #   command_line: shell command line (pipes and other shell metacharacters allowed)
 # note: if there are no shell special characters then all command-line parameters need to be passed separately.

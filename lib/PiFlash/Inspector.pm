@@ -6,6 +6,7 @@ use PiFlash::State;
 use PiFlash::Command;
 
 package PiFlash::Inspector;
+
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use File::Basename;
 use File::Slurp;

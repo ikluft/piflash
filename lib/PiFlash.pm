@@ -13,6 +13,7 @@ use File::Basename; # included with perl
 use File::LibMagic; # rpm: "dnf install perl-File-LibMagic", deb: "apt-get install libfile-libmagic-perl"
 
 package PiFlash;
+
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Getopt::Long; # included with perl
 

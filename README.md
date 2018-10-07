@@ -1,6 +1,6 @@
 # NAME
 
-piflash - Raspberry Pi SD-flashing script with power-user features and safety checks (to avoid erasing wrong device)
+piflash - Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 
 # SYNOPSIS
 
@@ -19,7 +19,7 @@ This script flashes an SD card for a Raspberry Pi. It includes safety checks so 
 
 ## Safety Checks
 
-The program makes a number of safety checks for you. Since the flashing process usually needs root permissions, these are considered prudent precautions.
+The program makes a number of safety checks for you. Since the SD card flashing process may need root permissions, these are considered prudent precautions.
 
 - The input file's format will be checked. If it ends in .img then it will be flashed directly as a binary image file. If it ends in .xz, .gzip or .zip, it will extract the binary image from the file. If the filename doesn't have a suffix, libmagic will be used to inspect the contents of the file (for "magic numbers") to determine its format.
 - The output device must be a block device.
@@ -32,11 +32,11 @@ Piflash has been tested with USB and PCI based SD card interfaces.
 Piflash automates the process of flashing an SD card from various Raspberry Pi OS images.
 
 - For most disk images, either in a raw \*.img file, compressed in a \*.gz or \*.xz file, or included in a \*.zip archive, piflash recognizes the file format and extracts the disk image for flashing, eliminating the step of uncompressing or unarchiving it before it can be flashed to the SD.
-- For zip archives, it checks if it contains the Raspberry Pi NOOBS (New Out Of the Box System), in which case it handles it differently. The steps it takes are similar to the instructions that one would have to follow manually.  It formats a new VFAT filesystem on the card. (FAT/VFAT is the only format recognized by the Raspberry Pi's simple boot loader.) Then it copies the contents of the zip archive into the card, automating the entire flashing process even for a NOOBS system, which previously didn't even have instructions how to be flashed from Linux systems.
+- For zip archives, it checks if it contains the Raspberry Pi NOOBS (New Out Of the Box System), in which case it handles it differently. The steps it takes are similar to the instructions that one would have to follow manually.  It formats a new VFAT filesystem on the card. (FAT/VFAT is the only format recognized by the Raspberry Pi's simple boot loader.) Then it copies the contents of the zip archive into the card, automating the entire flashing process even for a NOOBS system, which previously didn't even have instructions to be done from Linux systems.
 
 # INSTALLATION
 
-The piflash script only works on Linux systems. It depends on features of the Linux kernel to look up whether the output device is an SD card and other information about it. It has been tested so far on Fedora and Ubuntu to get the kernel parameters right for a USB SD card reader.
+The piflash script only works on Linux systems. It depends on features of the Linux kernel to look up whether the output device is an SD card and other information about it. It has been tested so far on Fedora 25, and some experimentation with Ubuntu 16.04 (in a virtual machine) to get the kernel parameters right for a USB SD card reader.
 
 ## System Dependencies
 
@@ -59,15 +59,23 @@ libmagic/file-libs, File::LibMagic (perl)
 
 ## Piflash script
 
-The piflash script was introduced in the February 2017 presentation ["Perl on the Raspberry Pi"](https://www.slideshare.net/ikluft/perl-on-raspberry-pi-svperl-20170202) at Silicon Valley Perl, and in the March 2017 article ["Getting started with Perl on the Raspberry Pi"](https://opensource.com/article/17/3/perl-raspberry-pi) on OpenSource.com. It was originally over 1000 lines in a single Perl script file, in order to allow installing it with a one-liner wget or curl command. It has been reorganized into multiple files as a Perl module which can be installed from CPAN or GitHub. The command-line parameters of the piflash script are still backward-compatible.
+The piflash script can be downloaded with either of these commands.
+
+        curl -L https://github.com/ikluft/ikluft-tools/raw/master/piflash/piflash > piflash
+
+or
+
+        wget https://github.com/ikluft/ikluft-tools/raw/master/piflash/piflash
 
 ## Bug reporting
 
-Report bugs via GitHub at https://github.com/ikluft/piflash/issues - this location may eventually change
+Report bugs via GitHub at https://github.com/ikluft/ikluft-tools/issues - this location may eventually change
 if piflash becomes popular enough to warrant having its own source code repository.
 
 When reporting a bug, please include the full output using the --verbose option. That will include all of the
-program's state information.
+program's state information, which will help understand the bigger picture what was happening on your system.
+Feel free to remove information you don't want to post in a publicly-visible bug report - though it's helpful
+to add "\[redacted\]" where you removed something so it's clear what happened.
 
 For any SD card reader hardware which piflash fails to recognize (and therefore refuses to write to),
 please describe the hardware as best you can including name, product number, bus (USB, PCI, etc),

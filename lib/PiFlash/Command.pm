@@ -8,6 +8,7 @@ use PiFlash::State;
 use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
 
 package PiFlash::Command;
+
 use autodie;
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
 

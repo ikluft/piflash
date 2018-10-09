@@ -25,9 +25,7 @@ use File::Slurp;
 
 =head1 DESCRIPTION
 
-This class contains internal functions used by L<PiFlash> to gather data about available devices on the system and determine if they are SD card devices.
-
-PiFlash uses this info to refuse to write/destroy a device which is not an SD card. This provides a safeguard while using root permissions against a potential error which has happened where users have accidentally erased the wrong block device, losing a hard drive they wanted to keep.
+This class contains internal functions used by L<PiFlash> in the process of collecting data on the system's devices to determine which are SD cards, to avoid accidentally erasing any devices which are not SD cards. This is for automation of the process of flashing an SD card for a Raspberry Pi single-board computer from a Linux system.
 
 =head1 SEE ALSO
 

@@ -12,8 +12,8 @@ A more detailed code of conduct will be selected as more developers join the PiF
 To set inital expectations, we'll use the [Contributor Covenant v1.4](https://www.contributor-covenant.org/version/1/4/code-of-conduct).
 This expectation applies both ways, and should be used as a gentle reminder to contributors or developers as needed.
 
-The point of a code of conduct is to avoid an unstructured environment where the last loud bully standing always wins,
-after they've caused others to give up and go away.
+The point of a code of conduct in an Open Source software project is to avoid an unstructured environment where
+the last loud bully standing always wins, after they've caused others to give up and go away.
 Like it or not, that's human nature - if you allow it by having no standards of behavior, someone *will* do that.
 Even before the Internet, this trend was documented in the 1970s in "[The Tyranny of Structurelessness](https://en.wikipedia.org/wiki/The_Tyranny_of_Structurelessness)".
 It is not a new problem.
@@ -40,5 +40,7 @@ Before it can be accepted, it will be reviewed.
 Any description, documentation and tests necessary for that may help speed it along.
 
 GitHub has help on creating pull requerts at https://help.github.com/articles/creating-a-pull-request/
+
+New pull requests can be submitted at https://github.com/ikluft/piflash/pulls
 
 Be ready to answer questions about the pull request if necessary.

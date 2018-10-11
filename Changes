@@ -1,4 +1,9 @@
+Change log for PiFlash
+
 {{$NEXT}}
- 
+* split 1000+ line piflash script into modules: PiFlash, PiFlash::Command, PiFlash::Inspector, PiFlash::State
+* add test directory and basic tests
+* add build/PiFlash.spec for building RPM packages - piflash script uses the modules, user doesn't need to know Perl
+
 v0.0.1 March 2017
 * release piflash script with "Using Perl on the Raspberry Pi" article by Ian Kluft on OpenSource.com

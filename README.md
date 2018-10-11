@@ -59,17 +59,69 @@ libmagic/file-libs, File::LibMagic (perl)
 
 ## Piflash script
 
-The piflash script can be downloaded with either of these commands.
-
-        curl -L https://github.com/ikluft/ikluft-tools/raw/master/piflash/piflash > piflash
-
-or
-
-        wget https://github.com/ikluft/ikluft-tools/raw/master/piflash/piflash
+This is the Perl distribution PiFlash.
+ 
+Installing PiFlash is straightforward.
+ 
+### Installation with cpanm
+ 
+If you have cpanm, you only need one line:
+ 
+    % cpanm PiFlash
+ 
+If it does not have permission to install modules to the current perl, cpanm
+will automatically set up and install to a local::lib in your home directory.
+See the local::lib documentation (https://metacpan.org/pod/local::lib) for
+details on enabling it in your environment.
+ 
+### Installing with the CPAN shell
+ 
+Alternatively, if your CPAN shell is set up, you should just be able to do:
+ 
+    % cpan PiFlash
+ 
+### Manual installation
+ 
+As a last resort, you can manually install it. Download the tarball, untar it,
+install configure prerequisites (see below), then build it:
+ 
+    % perl Makefile.PL
+    % make && make test
+ 
+Then install it:
+ 
+    % make install
+ 
+On Windows platforms, you should use `dmake` or `nmake`, instead of `make`.
+ 
+If your perl is system-managed, you can create a local::lib in your home
+directory to install modules to. For details, see the local::lib documentation:
+https://metacpan.org/pod/local::lib
+ 
+The prerequisites of this distribution will also have to be installed manually. The
+prerequisites are listed in one of the files: `MYMETA.yml` or `MYMETA.json` generated
+by running the manual build process described above.
+ 
+### Configure Prerequisites
+ 
+This distribution requires other modules to be installed before this
+distribution's installer can be run.  They can be found under the
+"configure_requires" key of META.yml or the
+"{prereqs}{configure}{requires}" key of META.json.
+ 
+### Documentation
+ 
+PiFlash documentation is available as POD.
+You can run `perldoc` from a shell to read the documentation:
+ 
+    % perldoc PiFlash
+ 
+For more information on installing Perl modules via CPAN, please see:
+https://www.cpan.org/modules/INSTALL.html
 
 ## Bug reporting
 
-Report bugs via GitHub at https://github.com/ikluft/ikluft-tools/issues - this location may eventually change
+Report bugs via GitHub at https://github.com/ikluft/piflash/issues - this location may eventually change
 if piflash becomes popular enough to warrant having its own source code repository.
 
 When reporting a bug, please include the full output using the --verbose option. That will include all of the

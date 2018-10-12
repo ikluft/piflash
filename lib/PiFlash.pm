@@ -17,7 +17,7 @@ package PiFlash;
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Getopt::Long; # included with perl
 
-# ABSTRACT: command-line processing for piflash script to flash SD card for Raspberry Pi
+# ABSTRACT: Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 
 =head1 SYNOPSIS
 

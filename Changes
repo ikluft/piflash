@@ -1,6 +1,9 @@
 Change log for PiFlash
 
 {{$NEXT}}
+ - OK, tried it... abandon for now use of Dist::Zilla's plugins for RPM & Deb package generation on release
+
+0.0.4
  - experiment with automatic generation of RPM and Debian Dpkg files on release
 
 0.0.3 2018-10-11T16:47:42-07:00 America/Los_Angeles

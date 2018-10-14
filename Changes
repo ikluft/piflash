@@ -1,19 +1,7 @@
 Change log for PiFlash
 
 {{$NEXT}}
- [API CHANGE]
-
- [BUG FIXES]
-
- [ENHANCEMENTS]
-
- [MAJOR]
-
- [MINOR]
-
- [REVISION]
-
- [SECURITY]
+ - experiment with automatic generation of RPM and Debian Dpkg files on release
 
 0.0.3 2018-10-11T16:47:42-07:00 America/Los_Angeles
  - update installation instructions to reflect piflash's move on GitHub

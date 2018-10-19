@@ -3,13 +3,13 @@
 use strict;
 use warnings;
 
-package PiFlash::Command;
-
 use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
+
+package PiFlash::Command;
 
 use autodie;
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle

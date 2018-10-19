@@ -4,6 +4,10 @@
 # the information stored here includes configuration,command-line arguments, system hardware inspection results, etc
 #
 
+# State class to hold program state, and print it all out in case of errors
+# this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
+package PiFlash::State;
+
 use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
@@ -11,34 +15,63 @@ use autodie;
 use Moose; 
 use Carp;
 
-# State class to hold program state, and print it all out in case of errors
-# this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
-package PiFlash::State;
-
 # ABSTRACT: PiFlash::State class to store configuration, device info and program state
 
 =head1 SYNOPSIS
 
+ # initialize: creates empty sub-objects and accessor functions as shown below
+ PiFlash::State->init("system", "input", "output", "option", "log");
+
+ # core functions
  $bool = PiFlash::State::verbose()
  PiFlash::State::odump
  PiFlash::State->error("error message");
 
+ # system accessors
+ my $system = PiFlash::State::system();
+ my $bool = PiFlash::State::has_system($key);
+ my $value = PiFlash::State::system($key);
+ PiFlash::State::system($key, $value);
+
+ # input accessors
+ my $input = PiFlash::State::input();
+ my $bool = PiFlash::State::has_input($key);
+ my $value = PiFlash::State::input($key);
+ PiFlash::State::input($key, $value);
+
+ # output accessors
+ my $output = PiFlash::State::output();
+ my $bool = PiFlash::State::has_output($key);
+ my $value = PiFlash::State::output($key);
+ PiFlash::State::output($key, $value);
+
+ # option accessors
+ my $option = PiFlash::State::option();
+ my $bool = PiFlash::State::has_option($key);
+ my $value = PiFlash::State::option($key);
+ PiFlash::State::option($key, $value);
+
+ # log accessors
+ my $log = PiFlash::State::log();
+ my $bool = PiFlash::State::has_log($key);
+ my $value = PiFlash::State::log($key);
+ PiFlash::State::log($key, $value);
+
 =head1 DESCRIPTION
 
-This class contains internal functions used by L<PiFlash> to gather data about available devices on the system and determine if they are SD card devices.
+This class contains internal functions used by L<PiFlash> to store command-line parameters, input & output file data, available device data and program logs.
 
-PiFlash uses this info to refuse to write/destroy a device which is not an SD card. This provides a safeguard while using root permissions against a potential error which has happened where users have accidentally erased the wrong block device, losing a hard drive they wanted to keep.
+PiFlash uses the device info to refuse to write/destroy a device which is not an SD card. This provides a safeguard while using root permissions against a potential error which has happened where users have accidentally erased the wrong block device, losing a hard drive they wanted to keep.
 
 =head1 SEE ALSO
 
-L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>
 
 =cut
 
 
 # initialize state as empty
 ## no critic (ProhibitPackageVars)
-#BEGIN { $PiFlash::State::state = undef; }
 our $state;
 ## use critic
 

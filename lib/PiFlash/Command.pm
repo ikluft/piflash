@@ -1,13 +1,15 @@
 # PiFlash::Command - run commands including fork paramaters and piping input & output
 # by Ian Kluft
+use strict;
+use warnings;
+
+package PiFlash::Command;
 
 use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
-
-package PiFlash::Command;
 
 use autodie;
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
@@ -27,7 +29,7 @@ their input and output.
 
 =head1 SEE ALSO
 
-L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+L<piflash>, L<PiFlash::Inspector>, L<PiFlash::State>
 
 =cut
 
@@ -58,6 +60,7 @@ sub fork_child {
 # fork/exec wrapper to run child processes and collect output/error results
 # used as lower level call by cmd() and cmd2str()
 # this would be a lot simpler with qx()/backtick/system - but wrapper lets us send input & capture output/error data
+## no critic (RequireArgUnpacking)
 sub fork_exec
 {
 	# input for child process may be provided as reference to array - use it and remove it from parameters
@@ -199,6 +202,7 @@ sub fork_exec
 	# return output/error
 	return @text;
 }
+## use critic
 
 # run a command
 # usage: cmd( label, command_line)
@@ -206,6 +210,7 @@ sub fork_exec
 #   command_line: shell command line (pipes and other shell metacharacters allowed)
 # note: if there are no shell special characters then all command-line parameters need to be passed separately.
 # If there are shell special characters then it will be given to the shell for parsing.
+## no critic (RequireArgUnpacking)
 sub cmd
 {
 	my $cmdname = shift;
@@ -223,11 +228,13 @@ sub cmd
 	}
 	return 1;
 }
+## use critic
 
 # run a command and return the output as a string
 # This originally used qx() to fork child process and obtain output.  But Perl::Critic discourages use of qx/backtick.
 # And it would be useful to provide input to child process, rather than using a wasteful echo-to-pipe shell command.
 # So the fork_exec_wrapper() was added as a lower-level base for cmd() and cmd2str().
+## no critic (RequireArgUnpacking)
 sub cmd2str
 {
 	#my $cmd = join(" ", @_);
@@ -239,8 +246,10 @@ sub cmd2str
 	}
 	return wantarray ? split /\n/, $out : $out;
 }
+## use critic
 
 # look up secure program path
+## no critic (RequireFinalReturn)
 sub prog
 {
 	my $progname = shift;
@@ -267,6 +276,6 @@ sub prog
 	PiFlash::State->error("unknown secure location for $progname - install it or set "
 			.(uc $progname."_PROG")." to point to it");
 }
-
+## use critic
 
 1;

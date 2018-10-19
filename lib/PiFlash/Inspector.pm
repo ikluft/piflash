@@ -1,4 +1,6 @@
 # PiFlash::Inspector - inspection of the Linux system configuration including identifying SD card devices
+# by Ian Kluft
+
 use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
@@ -29,7 +31,7 @@ This class contains internal functions used by L<PiFlash> in the process of coll
 
 =head1 SEE ALSO
 
-L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+L<piflash>, L<PiFlash::Command>, L<PiFlash::State>
 
 =cut
 

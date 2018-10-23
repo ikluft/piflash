@@ -1,19 +1,5 @@
-#
-#===============================================================================
-#
-#         FILE: 001module_load.t
-#
-#  DESCRIPTION: 
-#
-#        FILES: ---
-#         BUGS: ---
-#        NOTES: ---
-#       AUTHOR: YOUR NAME (), 
-# ORGANIZATION: 
-#      VERSION: 1.0
-#      CREATED: 10/07/2018 03:27:10 AM
-#     REVISION: ---
-#===============================================================================
+#!/usr/bin/perl
+# 001module_load.t - basic test that the modules all load
 
 use strict;
 use warnings;

@@ -7,21 +7,19 @@
 use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
+use Carp qw(croak);
 
 # State class to hold program state, and print it all out in case of errors
 # this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
 package PiFlash::State;
-
 use autodie;
-use Moose; 
-use Carp;
 
 # ABSTRACT: PiFlash::State class to store configuration, device info and program state
 
 =head1 SYNOPSIS
 
  # initialize: creates empty sub-objects and accessor functions as shown below
- PiFlash::State->init("system", "input", "output", "option", "log");
+ PiFlash::State->init("system", "input", "output", "cli_opt", "log");
 
  # core functions
  $bool = PiFlash::State::verbose()
@@ -46,11 +44,11 @@ use Carp;
  my $value = PiFlash::State::output($key);
  PiFlash::State::output($key, $value);
 
- # option accessors
- my $option = PiFlash::State::option();
- my $bool = PiFlash::State::has_option($key);
- my $value = PiFlash::State::option($key);
- PiFlash::State::option($key, $value);
+ # cli_opt accessors
+ my $cli_opt = PiFlash::State::cli_opt();
+ my $bool = PiFlash::State::has_cli_opt($key);
+ my $value = PiFlash::State::cli_opt($key);
+ PiFlash::State::cli_opt($key, $value);
 
  # log accessors
  my $log = PiFlash::State::log();
@@ -106,6 +104,7 @@ sub init
 				if (defined $value) {
 					# got name & value - set the new value for name
 					$self->{$top_level_param}{$name} = $value;
+					return;
 				} elsif (defined $name) {
 					# got only name - return the value/ref of name
 					return (exists $self->{$top_level_param}{$name})
@@ -130,7 +129,7 @@ sub init
 # return boolean value for verbose mode
 sub verbose
 {
-	return PiFlash::State::option("verbose") // 0;
+	return PiFlash::State::cli_opt("verbose") // 0;
 }
 
 # dump data structure recursively, part of verbose state output
@@ -151,7 +150,7 @@ sub odump
 		# process scalar reference
 		return ("    " x $level).($$obj // "undef")."\n";
 	}
-	if (ref $obj eq "HASH" or ref $obj eq "State") {
+	if (ref $obj eq "HASH" or ref $obj eq "PiFlash::State") {
 		# process hash reference
 		my $str = "";
 		foreach my $key (sort {lc $a cmp lc $b} keys %$obj) {

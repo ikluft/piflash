@@ -62,22 +62,22 @@ sub num_readable
 sub piflash
 {
 	# initialize program state storage
-	PiFlash::State->init("system", "input", "output", "option", "log");
+	PiFlash::State->init("system", "input", "output", "cli_opt", "log");
 
 	# collect and validate command-line arguments
-	do { GetOptions (PiFlash::State::option(), "verbose", "sdsearch"); };
+	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch"); };
 	if ($@) {
 		# in case of failure, add state info if verbose mode is set
 		PiFlash::State->error($@);
 	}
-	if (($#ARGV != 1) and (!PiFlash::State::has_option("sdsearch"))) {
+	if (($#ARGV != 1) and (!PiFlash::State::has_cli_opt("sdsearch"))) {
 		usage();
 	}
 	# collect system info: kernel specs and locations of needed programs
 	PiFlash::Inspector::collect_system_info();
 
 	# if --SDsearch option was selected, search for SD cards and exit
-	if (PiFlash::State::has_option("sdsearch")) {
+	if (PiFlash::State::has_cli_opt("sdsearch")) {
 		# SDsearch mode: print list of SD card devices and exit
 		PiFlash::Inspector::sd_search();
 		return;

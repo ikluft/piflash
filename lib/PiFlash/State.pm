@@ -86,6 +86,11 @@ sub init
 	$PiFlash::State::state = {};
 	bless $PiFlash::State::state, $class;
 	my $self = $PiFlash::State::state;
+
+	# get symbol table for State package so we can add accessor functions named for top-level hashes
+	my $symtab = \%PiFlash::State::;
+
+	# loop through parameters adding each name as a top-level state hash and accessor functions
 	while (scalar @_ > 0) {
 		my $top_level_param = shift;
 
@@ -94,9 +99,6 @@ sub init
 
 		# generate class accessor methods named for the parameter
 		{
-			# get symbol table for State package so we can add accessor functions named for top-level hashes
-			my $symtab = \%PiFlash::State::;
-
 			# accessor fieldname()
 			$symtab->{$top_level_param} = sub {
 				my $name = shift;

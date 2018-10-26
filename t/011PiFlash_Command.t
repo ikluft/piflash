@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use autodie;
 
-use Test::More tests => 3;                      # last test to print
+use Test::More tests => 5;                      # last test to print
 use PiFlash::State;
 use PiFlash::Command;
 
@@ -26,27 +26,47 @@ PiFlash::State->init(@top_level_params);
 
 # strings used for following tests
 my $test_string = "Ad astra per alas porci";
-my $cat_prog;
-foreach my $pathdir ("/usr/bin", "/bin") {
-	if ( -e "$pathdir/cat" ) {
-		$cat_prog = "$pathdir/cat";
-		last;
+my %prog_path;
+my @prog_names = qw(cat echo);
+my $cat_prog; # path remains undefined if program not found
+foreach my $progname (@prog_names) {
+	foreach my $pathdir ("/usr/bin", "/bin") {
+		if ( -e "$pathdir/$progname" ) {
+			$prog_path{$progname} = "$pathdir/$progname";
+			last;
+		}
 	}
 }
 
-# test capturing output from a program with fork_exec()
-#{
-#	my ($out, $err) = fork_exec($cmdname, @_);
-#}
+# test capturing output of a fixed string from a program with fork_exec()
+# effectively runs this command: echo "$test_string"
+SKIP: {
+	my ($out, $err);
+	if (exists $prog_path{echo}) {
+		($out, $err) = PiFlash::Command::fork_exec([ $test_string ], "fork an echo", $prog_path{echo}, $test_string);
+	} else {
+		skip "echo program not found", 2;
+	}
+	chomp $out;
+	is ($out, $test_string, "fork_exec() test output capture 1 is correct");
+	is ($err, undef, "fork_exec() test error capture 1 is empty");
+}
 
-# test sending input and receiving output from a program with fork_exec()
-{
-	if (!defined $cat_prog) {
+# test sending input and receiving the same string back as output from a program with fork_exec()
+# effectively runs this command: cat
+# input piped to the program: $test_string
+SKIP: {
+	my ($out, $err);
+	if (exists $prog_path{cat}) {
+		($out, $err) = PiFlash::Command::fork_exec([ $test_string ], "fork a cat", $prog_path{cat});
+	} else {
 		skip "cat program not found", 2;
 	}
-	my ($out, $err) = PiFlash::Command::fork_exec([ $test_string ], $cat_prog);
-	is ($out, $test_string, "fork_exec() test output capture");
-	is ($err, undef, "fork_exec() test errors capture is empty");
+	chomp $out;
+	is ($out, $test_string, "fork_exec() test output capture 2 is correct");
+	is ($err, undef, "fork_exec() test error capture 2 is empty");
 }
+
+# TODO: more tests which deliberately capture error output and error results
 
 1;

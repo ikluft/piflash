@@ -131,7 +131,7 @@ sub fork_exec
 	if (@input) {
 		# blocks until input is accepted - this interface reqiuires child commands using input take it before output
 		# because parent process is not multithreaded
-		if (syswrite($child_in_writer, join("\n", @input)."\n") == undef) {
+		if (!defined syswrite($child_in_writer, join("\n", @input)."\n")) {
 			PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
 		}
 	}

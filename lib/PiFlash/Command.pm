@@ -8,6 +8,7 @@ use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
+use Carp;
 
 package PiFlash::Command;
 
@@ -36,7 +37,8 @@ L<piflash>, L<PiFlash::Inspector>, L<PiFlash::State>
 
 # fork wrapper function
 # borrowed from Aaron Crane's YAPC::EU 2009 presentation slides online
-sub fork_child {
+sub fork_child
+{
     my ($child_process_code) = @_;
 
 	# fork and catch errors
@@ -51,15 +53,15 @@ sub fork_child {
 	}
 
     # if in child process, run requested code
-    $child_process_code->();
+    my $result = $child_process_code->();
 
 	# if we got here, child code returned - so exit to end the subprocess
-    exit;
+    exit $result;
 }
 
 # fork/exec wrapper to run child processes and collect output/error results
 # used as lower level call by cmd() and cmd2str()
-# this would be a lot simpler with qx()/backtick/system - but wrapper lets us send input & capture output/error data
+# adds more capability than qx()/backtick/system - wrapper lets us send input & capture output/error data
 ## no critic (RequireArgUnpacking)
 sub fork_exec
 {
@@ -127,7 +129,8 @@ sub fork_exec
 
 	# write to child's input if any content was provided
 	if (@input) {
-		# blocks until input is accepted - it is required that all commands using input take it before output
+		# blocks until input is accepted - this interface reqiuires child commands using input take it before output
+		# because parent process is not multithreaded
 		if (syswrite($child_in_writer, join("\n", @input)."\n") == undef) {
 			PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
 		}
@@ -173,7 +176,7 @@ sub fork_exec
 	waitpid( $pid, 0 );
 
 	# record all command return codes, stdout & stderr in a new top-level store in State
-	# it's overhead but could be useful for problem-reporting, troubleshooting, debugging and testing
+	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
 	if (PiFlash::State::verbose()) {
 		my $log = PiFlash::State::log();
 		if (!exists $log->{cmd}) {

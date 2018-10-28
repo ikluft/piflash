@@ -240,8 +240,6 @@ sub cmd
 ## no critic (RequireArgUnpacking)
 sub cmd2str
 {
-	#my $cmd = join(" ", @_);
-	#return qx($cmd);
 	my $cmdname = shift;
 	my ($out, $err) = fork_exec($cmdname, @_);
 	if (defined $err) {
@@ -256,14 +254,27 @@ sub cmd2str
 sub prog
 {
 	my $progname = shift;
+
+	if (!PiFlash::State::has_system("prog")) {
+		PiFlash::State::system("prog", {});
+	}
 	my $prog = PiFlash::State::system("prog");
+
+	# call with undef to initialize cache (mainly needed for testing because normal use will auto-create it)
+	if (!defined $progname) {
+		return;
+	}
+
+	# return value from cache if found
 	if (exists $prog->{$progname}) {
 		return $prog->{$progname};
 	}
 
 	# if we didn't have the location of the program, look for it and cache the result
-	if (exists $ENV{uc $progname."_PROG"} and -x $ENV{uc $progname."_PROG"}) {
-		$prog->{$progname} = $ENV{uc $progname."_PROG"};
+	my $envprog = (uc $progname)."_PROG";
+	$envprog =~ s/\W+/_/g; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
+	if (exists $ENV{$envprog} and -x $ENV{$envprog}) {
+		$prog->{$progname} = $ENV{$envprog};
 		return $prog->{$progname};
 	}
 

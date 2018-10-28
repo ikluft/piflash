@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use autodie;
 
-use Test::More tests => 5;                      # last test to print
+use Test::More tests => 8;                      # last test to print
 use PiFlash::State;
 use PiFlash::Command;
 
@@ -27,7 +27,7 @@ PiFlash::State->init(@top_level_params);
 # strings used for following tests
 my $test_string = "Ad astra per alas porci";
 my %prog_path;
-my @prog_names = qw(cat echo);
+my @prog_names = qw(cat echo sh);
 my $cat_prog; # path remains undefined if program not found
 foreach my $progname (@prog_names) {
 	foreach my $pathdir ("/usr/bin", "/bin") {
@@ -43,7 +43,7 @@ foreach my $progname (@prog_names) {
 SKIP: {
 	my ($out, $err);
 	if (exists $prog_path{echo}) {
-		($out, $err) = PiFlash::Command::fork_exec([ $test_string ], "fork an echo", $prog_path{echo}, $test_string);
+		($out, $err) = PiFlash::Command::fork_exec("fork an echo", $prog_path{echo}, $test_string);
 	} else {
 		skip "echo program not found", 2;
 	}
@@ -67,6 +67,36 @@ SKIP: {
 	is ($err, undef, "fork_exec() test error capture 2 is empty");
 }
 
-# TODO: more tests which deliberately capture error output and error results
+# test capturing an error output
+SKIP: {
+	my ($out, $err);
+	if (exists $prog_path{sh}) {
+		($out, $err) = PiFlash::Command::fork_exec("fork a shell", $prog_path{sh}, "-c", qq{echo $test_string >&2});
+	} else {
+		skip "sh program not found", 2;
+	}
+	is ($out, undef, "fork_exec() test output capture 1 is empty");
+	chomp $err;
+	is ($err, $test_string, "fork_exec() test error capture 1 contains test string");
+}
+
+# test capturing an error result
+SKIP: {
+	my ($out, $err);
+	my $expected_exception = 0;
+	if (exists $prog_path{sh}) {
+		eval { PiFlash::Command::fork_exec("fork a shell", $prog_path{sh}, "-c", qq{exit 1}) };
+		if ( $@ =~ /fork a shell command exited with value 1/ ) {
+			$expected_exception = 1;
+		}
+	} else {
+		skip "sh program not found", 2;
+	}
+	is($expected_exception, 1, "intentional error result");
+}
+
+
+
+# TODO: more tests which deliberately capture  error results
 
 1;

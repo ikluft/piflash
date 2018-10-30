@@ -11,7 +11,8 @@ package PiFlash::Inspector;
 
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use File::Basename;
-use File::Slurp;
+use File::Slurp qw(slurp);
+use File::LibMagic; # rpm: "dnf install perl-File-LibMagic", deb: "apt-get install libfile-libmagic-perl"
 
 # ABSTRACT: PiFlash functions to inspect Linux system devices to flash an SD card for Raspberry Pi
 
@@ -384,26 +385,6 @@ sub base
 	my $path = shift;
 	my $filename = File::Basename::fileparse($path, ());
 	return $filename;
-}
-
-# slurp function: get file contents into a string
-sub slurp
-{
-	my $filename = shift;
-	open my $fh, "<", $filename;
-	my $str = do {
-		## no critic (RequireInitializationForLocalVars)
-		local $/; # avoid interference from functions which modify global $/
-		<$fh>
-	};
-	close $fh;
-	if (wantarray) {
-		my @str = split /^/, $str;
-		chomp @str;
-		return @str;
-	}
-	chomp $str;
-	return $str;
 }
 
 1;

@@ -8,12 +8,12 @@ use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
-use Carp;
+use POSIX; # included with perl
 
 package PiFlash::Command;
-
 use autodie;
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
+use Carp qw(carp croak);
 
 # ABSTRACT: process/command running utilities for piflash
 
@@ -90,31 +90,31 @@ sub fork_exec
 
 		# close our copy of parent's end of pipes to avoid deadlock - it must now be only one with them open
 		close $child_in_writer
-			or Carp::croak "fork_exec($cmdname): child failed to close parent process input writer pipe: $!";
+			or croak "fork_exec($cmdname): child failed to close parent process input writer pipe: $!";
 		close $child_out_reader
-			or Carp::croak "fork_exec($cmdname): child failed to close parent process output reader pipe: $!";
+			or croak "fork_exec($cmdname): child failed to close parent process output reader pipe: $!";
 		close $child_err_reader
-			or Carp::croak "fork_exec($cmdname): child failed to close parent process error reader pipe: $!";
+			or croak "fork_exec($cmdname): child failed to close parent process error reader pipe: $!";
 
 		# dup file descriptors into child's standard in=0/out=1/err=2 positions
 		POSIX::dup2(fileno $child_in_reader, 0)
-			or Carp::croak "fork_exec($cmdname): child failed to reopen stdin from pipe: $!\n";
+			or croak "fork_exec($cmdname): child failed to reopen stdin from pipe: $!\n";
 		POSIX::dup2(fileno $child_out_writer, 1)
-			or Carp::croak "fork_exec($cmdname): child failed to reopen stdout to pipe: $!\n";
+			or croak "fork_exec($cmdname): child failed to reopen stdout to pipe: $!\n";
 		POSIX::dup2(fileno $child_err_writer, 2)
-			or Carp::croak "fork_exec($cmdname): child failed to reopen stderr to pipe: $!\n";
+			or croak "fork_exec($cmdname): child failed to reopen stderr to pipe: $!\n";
 
 		# close the file descriptors that were just consumed by dup2
 		close $child_in_reader
-			or Carp::croak "fork_exec($cmdname): child failed to close child process input reader pipe: $!";
+			or croak "fork_exec($cmdname): child failed to close child process input reader pipe: $!";
 		close $child_out_writer
-			or Carp::croak "fork_exec($cmdname): child failed to close child process output writer pipe: $!";
+			or croak "fork_exec($cmdname): child failed to close child process output writer pipe: $!";
 		close $child_err_writer
-			or Carp::croak "fork_exec($cmdname): child failed to close child process error writer pipe: $!";
+			or croak "fork_exec($cmdname): child failed to close child process error writer pipe: $!";
 
 		# execute the command
 		exec @args
-			or Carp::croak "fork_exec($cmdname): failed to execute command - returned $?";
+			or croak "fork_exec($cmdname): failed to execute command - returned $?";
 	});
 
 	# in parent process
@@ -243,7 +243,7 @@ sub cmd2str
 	my $cmdname = shift;
 	my ($out, $err) = fork_exec($cmdname, @_);
 	if (defined $err) {
-		Carp::carp("$cmdname had error output:\n".$err);
+		carp("$cmdname had error output:\n".$err);
 	}
 	return wantarray ? split /\n/, $out : $out;
 }

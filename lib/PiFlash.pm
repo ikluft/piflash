@@ -8,10 +8,7 @@ use PiFlash::State;
 use PiFlash::Command;
 use PiFlash::Inspector;
 use PiFlash::MediaWriter;
-use Carp;
-use POSIX; # included with perl
 use File::Basename; # included with perl
-use File::LibMagic; # rpm: "dnf install perl-File-LibMagic", deb: "apt-get install libfile-libmagic-perl"
 
 package PiFlash;
 
@@ -39,8 +36,8 @@ L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>,
 # print program usage message
 sub usage
 {
-	say STDERR "usage: ".PiFlash::Inspector::base($0)." [--verbose] input-file output-device";
-	say STDERR "       ".PiFlash::Inspector::base($0)." [--verbose] --SDsearch";
+	say STDERR "usage: ".basename($0)." [--verbose] input-file output-device";
+	say STDERR "       ".basename($0)." [--verbose] --SDsearch";
 	exit 1;
 }
 

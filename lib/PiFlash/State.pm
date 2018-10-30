@@ -7,12 +7,12 @@
 use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
-use Carp qw(croak);
 
 # State class to hold program state, and print it all out in case of errors
 # this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
 package PiFlash::State;
 use autodie;
+use Carp qw(croak);
 
 # ABSTRACT: PiFlash::State class to store configuration, device info and program state
 
@@ -191,7 +191,7 @@ sub error
 	## no critic (ProhibitPackageVars)
 	my $class = shift;
 	my $message = shift;
-	Carp::croak "error: ".$message.(verbose() ? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
+	croak "error: ".$message.(verbose() ? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
 }
 
 1;

@@ -6,6 +6,7 @@ use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 use PiFlash::Command;
+use PiFlash::Hook;
 
 package PiFlash::MediaWriter;
 
@@ -144,6 +145,11 @@ sub flash_device
 	}
 	say "wait for it to finish - synchronizing buffers";
 	PiFlash::Command::cmd("sync", PiFlash::Command::prog("sync"));
+
+	# optional post-install tweaks
+	PiFlash::Hook::post_install();
+
+	# report that it's done
 	say "done - it is safe to remove the SD card";
 }
 

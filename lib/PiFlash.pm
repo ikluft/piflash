@@ -59,7 +59,7 @@ sub num_readable
 sub piflash
 {
 	# initialize program state storage
-	PiFlash::State->init("system", "input", "output", "cli_opt", "log");
+	PiFlash::State->init("system", "input", "output", "cli_opt", "log", "hook");
 
 	# collect and validate command-line arguments
 	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch"); };

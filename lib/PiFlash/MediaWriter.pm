@@ -146,7 +146,7 @@ sub flash_device
 	say "wait for it to finish - synchronizing buffers";
 	PiFlash::Command::cmd("sync", PiFlash::Command::prog("sync"));
 
-	# optional post-install tweaks
+	# call hooks for optional post-install tweaks
 	PiFlash::Hook::post_install();
 
 	# report that it's done

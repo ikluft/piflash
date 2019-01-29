@@ -92,8 +92,6 @@ Then install it:
  
     % make install
  
-On Windows platforms, you should use `dmake` or `nmake`, instead of `make`.
- 
 If your perl is system-managed, you can create a local::lib in your home
 directory to install modules to. For details, see the local::lib documentation:
 https://metacpan.org/pod/local::lib

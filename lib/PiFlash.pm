@@ -8,12 +8,12 @@ use PiFlash::State;
 use PiFlash::Command;
 use PiFlash::Inspector;
 use PiFlash::MediaWriter;
-use File::Basename; # included with perl
 
 package PiFlash;
 
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Getopt::Long; # included with perl
+use File::Basename; # included with perl
 
 # ABSTRACT: Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 
@@ -38,6 +38,7 @@ sub usage
 {
 	say STDERR "usage: ".basename($0)." [--verbose] input-file output-device";
 	say STDERR "       ".basename($0)." [--verbose] --SDsearch";
+	say STDERR "       ".basename($0)." --version";
 	exit 1;
 }
 
@@ -62,14 +63,23 @@ sub piflash
 	PiFlash::State->init("system", "input", "output", "cli_opt", "log", "hook");
 
 	# collect and validate command-line arguments
-	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch"); };
+	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version"); };
 	if ($@) {
 		# in case of failure, add state info if verbose mode is set
 		PiFlash::State->error($@);
 	}
+
+	# if --version option was selected, print the version number and exit
+	if (PiFlash::State::has_cli_opt("version")) {
+		say $PiFlash::VERSION;
+		return;
+	}
+
+	# print usage info if 
 	if (($#ARGV != 1) and (!PiFlash::State::has_cli_opt("sdsearch"))) {
 		usage();
 	}
+
 	# collect system info: kernel specs and locations of needed programs
 	PiFlash::Inspector::collect_system_info();
 

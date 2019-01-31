@@ -7,6 +7,7 @@ use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 
 package PiFlash::Hook;
+
 use Carp qw(confess);
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 
@@ -41,7 +42,7 @@ sub AUTOLOAD {
 	my $called =  $AUTOLOAD =~ s/.*:://r;
 
 	# differentiate between class and instance methods
-	if ($self->isa("PiFlash::Hook")) {
+	if (defined $self and ref $self eq "PiFlash::Hook") {
 		# handle instance accessor
 		# if likely to be used a lot, optimize this by creating accessor function upon first access
 		if (exists $self->{$called}) {
@@ -53,7 +54,10 @@ sub AUTOLOAD {
 
 		# Is there a hook of that name?
 		if (!exists $hooks{$called}) {
-			confess "PiFlash::Hook dispatch: No such hook $called";
+			if (PiFlash::State::verbose()) {
+				say "PiFlash::Hook dispatch: no such hook $called - ignored";
+			}
+			return;
 		}
 
 		# call all functions registered in the list for this hook

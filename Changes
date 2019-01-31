@@ -1,6 +1,10 @@
 Change log for PiFlash
 
 {{$NEXT}}
+ - add --version to command line
+ - fixed PiFlash::Inspector SD search which needed to chomp CR's off of string read from /sys
+ - PiFlash::Hook tweaks - this feature is still an ongoing development
+ - cleanups: minor docs tweaks, add blank lines for Dist::Zilla to add VERSION to modules
  - OK, tried it... abandon for now use of Dist::Zilla's plugins for RPM & Deb package generation on release
 
 0.0.4

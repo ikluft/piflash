@@ -81,6 +81,7 @@ sub collect_system_info
 	# find filesystems supported by this kernel (for formatting SD card)
 	my %fs_pref = (vfat => 1, ext4 => 2, ext3 => 3, ext2 => 4, exfat => 5, other => 6); # fs preference order
 	my @filesystems = grep {! /^nodev\s/} slurp("/proc/filesystems");
+	chomp @filesystems;
 	for (my $i=0; $i<=$#filesystems; $i++) {
 		# remove leading and trailing whitespace;
 		$filesystems[$i] =~ s/^\s*//;
@@ -330,6 +331,7 @@ sub is_sd
 				.PiFlash::State::system("release")." may be too old");
 		}
 		my $sysfs_devtype = slurp($sysfs_devtype_path);
+		chomp $sysfs_devtype;
 		PiFlash::State::verbose() and say "output device ".$blkdev->{path}." is a $sysfs_devtype";
 		if ($sysfs_devtype eq "SD") {
 			return 1;

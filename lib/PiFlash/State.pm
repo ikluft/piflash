@@ -11,6 +11,7 @@ use v5.18.0; # require 2014 or newer version of Perl
 # State class to hold program state, and print it all out in case of errors
 # this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
 package PiFlash::State;
+
 use autodie;
 use Carp qw(croak);
 

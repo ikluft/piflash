@@ -11,6 +11,7 @@ use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
 use POSIX; # included with perl
 
 package PiFlash::Command;
+
 use autodie;
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
 use Carp qw(carp croak);

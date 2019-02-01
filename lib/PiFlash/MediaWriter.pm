@@ -11,6 +11,8 @@ use PiFlash::Hook;
 package PiFlash::MediaWriter;
 
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
+use File::Basename;
+use File::Slurp qw(slurp);
 
 # ABSTRACT: write to Raspberry Pi SD card installation with scriptable customization
 
@@ -143,8 +145,36 @@ sub flash_device
 			.PiFlash::State::input("path")."\" | ".PiFlash::Command::prog("sudo")." ".PiFlash::Command::prog("dd")
 			." bs=4M of=\"".PiFlash::State::output("path")."\" status=progress");
 	}
-	say "wait for it to finish - synchronizing buffers";
+	say "- synchronizing buffers";
 	PiFlash::Command::cmd("sync", PiFlash::Command::prog("sync"));
+
+	# resize root filesystem if command-line flag is set
+	# resize flag is silently ignored for NOOBS images because it will re-image and resize
+	if (PiFlash::State::has_cli_opt("resize") and not PiFlash::State::has_input("NOOBS")) {
+		say "- resizing the partition";
+		PiFlash::Command::cmd("reread partition table", PiFlash::Command::prog("sudo"),
+			PiFlash::Command::prog("blockdev"), "--flushbufs", "--rereadpt", PiFlash::State::output("path"));
+		my @partitions = grep {/part\s*$/} PiFlash::Command::cmd2str("lsblk - find partitions",
+			PiFlash::Command::prog("lsblk"), "--list", PiFlash::State::output("path"));
+		for (my $i=0; $i<scalar @partitions; $i++) {
+			$partitions[$i] =~ s/^([^\s]+)\s.*/$1/;
+		}
+		my $sd_name = basename(PiFlash::State::output("path"));
+		my $boot_part = $partitions[0];
+		my $root_part = $partitions[scalar @partitions-1];
+		my $root_num = slurp("/sys/block/$sd_name/$root_part/partition");
+		chomp $root_num;
+		my @sfdisk_resize_input = ( ", +" );
+		PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
+			PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet", "--no-reread", "-N", $root_num,
+			PiFlash::State::output("path"));
+		say "- checking the filesystem";
+		PiFlash::Command::cmd2str("filesystem check", PiFlash::Command::prog("sudo"),
+			PiFlash::Command::prog("e2fsck"), "-fy", "/dev/$root_part");
+		say "- resizing the filesystem";
+		PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
+			PiFlash::Command::prog("resize2fs"), "/dev/$root_part");
+	}
 
 	# call hooks for optional post-install tweaks
 	PiFlash::Hook::post_install();

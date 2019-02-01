@@ -36,7 +36,7 @@ L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>,
 # print program usage message
 sub usage
 {
-	say STDERR "usage: ".basename($0)." [--verbose] input-file output-device";
+	say STDERR "usage: ".basename($0)." [--verbose] [--resize] input-file output-device";
 	say STDERR "       ".basename($0)." [--verbose] --SDsearch";
 	say STDERR "       ".basename($0)." --version";
 	exit 1;
@@ -63,7 +63,7 @@ sub piflash
 	PiFlash::State->init("system", "input", "output", "cli_opt", "log", "hook");
 
 	# collect and validate command-line arguments
-	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version"); };
+	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize"); };
 	if ($@) {
 		# in case of failure, add state info if verbose mode is set
 		PiFlash::State->error($@);

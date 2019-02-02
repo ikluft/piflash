@@ -153,7 +153,7 @@ sub flash_device
 	if (PiFlash::State::has_cli_opt("resize") and not PiFlash::State::has_input("NOOBS")) {
 		say "- resizing the partition";
 		PiFlash::Command::cmd("reread partition table", PiFlash::Command::prog("sudo"),
-			PiFlash::Command::prog("blockdev"), "--flushbufs", "--rereadpt", PiFlash::State::output("path"));
+			PiFlash::Command::prog("blockdev"), "--rereadpt", PiFlash::State::output("path"));
 		my @partitions = grep {/part\s*$/} PiFlash::Command::cmd2str("lsblk - find partitions",
 			PiFlash::Command::prog("lsblk"), "--list", PiFlash::State::output("path"));
 		for (my $i=0; $i<scalar @partitions; $i++) {

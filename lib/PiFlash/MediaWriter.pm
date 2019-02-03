@@ -156,24 +156,36 @@ sub flash_device
 			PiFlash::Command::prog("blockdev"), "--rereadpt", PiFlash::State::output("path"));
 		my @partitions = grep {/part\s*$/} PiFlash::Command::cmd2str("lsblk - find partitions",
 			PiFlash::Command::prog("lsblk"), "--list", PiFlash::State::output("path"));
-		for (my $i=0; $i<scalar @partitions; $i++) {
-			$partitions[$i] =~ s/^([^\s]+)\s.*/$1/;
+
+		# check if there are any partitions before processing
+		# protects from scenario (such as RISCOS) where whole-device filesystem has no partition table
+		if (@partitions) {
+			for (my $i=0; $i<scalar @partitions; $i++) {
+				$partitions[$i] =~ s/^([^\s]+)\s.*/$1/;
+			}
+			my $sd_name = basename(PiFlash::State::output("path"));
+			my $boot_part = $partitions[0];
+			my $root_part = $partitions[scalar @partitions-1];
+			my $root_fstype = PiFlash::Command::cmd2str( "get root fs type", PiFlash::Command::prog("sudo"),
+				PiFlash::Command::prog("lsblk"), "--noheadings", "-o", "FSTYPE", "/dev/$root_part");
+			my $root_num = slurp("/sys/block/$sd_name/$root_part/partition");
+			chomp $root_num;
+			if ( $root_fstype =~ /^ext[234]/ ) {
+				# ext2/3/4 filesystem can be resized
+				my @sfdisk_resize_input = ( ", +" );
+				PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
+					PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet", "--no-reread", "-N",
+					$root_num, PiFlash::State::output("path"));
+				say "- checking the filesystem";
+				PiFlash::Command::cmd2str("filesystem check", PiFlash::Command::prog("sudo"),
+					PiFlash::Command::prog("e2fsck"), "-fy", "/dev/$root_part");
+				say "- resizing the filesystem";
+				PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
+					PiFlash::Command::prog("resize2fs"), "/dev/$root_part");
+			}
+		} else {
+			say "* partition resize skipped due to lack of partition table";
 		}
-		my $sd_name = basename(PiFlash::State::output("path"));
-		my $boot_part = $partitions[0];
-		my $root_part = $partitions[scalar @partitions-1];
-		my $root_num = slurp("/sys/block/$sd_name/$root_part/partition");
-		chomp $root_num;
-		my @sfdisk_resize_input = ( ", +" );
-		PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
-			PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet", "--no-reread", "-N", $root_num,
-			PiFlash::State::output("path"));
-		say "- checking the filesystem";
-		PiFlash::Command::cmd2str("filesystem check", PiFlash::Command::prog("sudo"),
-			PiFlash::Command::prog("e2fsck"), "-fy", "/dev/$root_part");
-		say "- resizing the filesystem";
-		PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
-			PiFlash::Command::prog("resize2fs"), "/dev/$root_part");
 	}
 
 	# call hooks for optional post-install tweaks

@@ -31,8 +31,9 @@ Requires:       perl(File::Slurp)
 Requires:       perl(Getopt::Long)
 Requires:       perl(IO::Handle)
 Requires:       perl(IO::Poll)
-Requires:       perl(Moose)
 Requires:       perl(POSIX)
+Requires:       perl(Exception::Class)
+Requires:       perl(Try::Tiny)
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 
 %{?perl_default_filter}

@@ -60,6 +60,20 @@ sub fork_child
     exit $result;
 }
 
+# command logging function
+sub cmd_log
+{
+	# record all command return codes, stdout & stderr in a new top-level store in State
+	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
+	if (PiFlash::State::verbose()) {
+		my $log = PiFlash::State::log();
+		if (!exists $log->{cmd}) {
+			$log->{cmd} = [];
+		}
+		push @{$log->{cmd}}, { @_ };
+	}
+}
+
 # fork/exec wrapper to run child processes and collect output/error results
 # used as lower level call by cmd() and cmd2str()
 # adds more capability than qx()/backtick/system - wrapper lets us send input & capture output/error data
@@ -71,6 +85,9 @@ sub fork_exec
 	if ( ref $_[0] eq "ARRAY" ) {
 		my $input_ref = shift;
 		@input = @$input_ref;
+	}
+	if (PiFlash::State::verbose()) {
+		say STDERR "fork_exec running: ".join(" ", @_);
 	}
 	my $cmdname = shift;
 	my @args = @_;
@@ -143,9 +160,9 @@ sub fork_exec
 	my @text = (undef, undef); # received text for out(0) and err(1)
 	my @done = (0, 0); # done flags for out(0) and err(1)
 	my $poll = IO::Poll->new();
-	$poll->mask($child_out_reader => POLLIN);
-	$poll->mask($child_err_reader => POLLIN);
-	while ((!$done[0]) or (!$done[1])) {
+	$poll->mask($fd[0] => POLLIN);
+	$poll->mask($fd[1] => POLLIN);
+	while (not $done[0] or not $done[1]) {
 		# wait for input
 		if ($poll->poll() == -1) {
 			PiFlash::State->error("fork_exec($cmdname): poll failed: $!");
@@ -162,12 +179,14 @@ sub fork_exec
 							$text[$i] = "";
 						}
 						$text[$i] .= $buffer;
+						say "debug buffer[$i]: $buffer"; # TODO remove
 					}
-				}
-				if ($events && (POLLHUP)) {
-					# hangup event means this fd (out=0, err=1) was closed by the child
-					$done[$i] = 1;
-					$poll->remove($fd[$i]);
+					if ($events && (POLLHUP)) {
+						# hangup event means this fd (out=0, err=1) was closed by the child
+						say "debug HUP $i"; # TODO remove
+						$done[$i] = 1;
+						$poll->remove($fd[$i]);
+					}
 				}
 			}
 		}
@@ -178,20 +197,14 @@ sub fork_exec
 
 	# record all command return codes, stdout & stderr in a new top-level store in State
 	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
-	if (PiFlash::State::verbose()) {
-		my $log = PiFlash::State::log();
-		if (!exists $log->{cmd}) {
-			$log->{cmd} = [];
-		}
-		push @{$log->{cmd}}, {
-			cmdname => $cmdname,
-			cmdline => [@args],
-			returncode => $? >> 8,
-			(($? & 127) ? (signal => sprintf "signal %d%s", ($? & 127), (($? & 128) ? " with coredump" : "")) : ()),
-			out => $text[0],
-			err => $text[1],
-		};
-	}
+	cmd_log (
+		cmdname => $cmdname,
+		cmdline => [@args],
+		returncode => $? >> 8,
+		(($? & 127) ? (signal => sprintf "signal %d%s", ($? & 127), (($? & 128) ? " with coredump" : "")) : ()),
+		out => $text[0],
+		err => $text[1]
+	);
 
 	# catch errors
 	if ($? == -1) {
@@ -219,9 +232,16 @@ sub cmd
 {
 	my $cmdname = shift;
 	if (PiFlash::State::verbose()) {
-		say STDERR "running: ".join(" ", @_);
+		say STDERR "cmd running: ".join(" ", @_);
 	}
-	system (@_);
+	my @args = @_;
+	system (@args);
+	cmd_log (
+		cmdname => $cmdname,
+		cmdline => [@args],
+		returncode => $? >> 8,
+		(($? & 127) ? (signal => sprintf "signal %d%s", ($? & 127), (($? & 128) ? " with coredump" : "")) : ()),
+	);
 	if ($? == -1) {
 		PiFlash::State->error("failed to execute $cmdname command: $!");
 	} elsif ($? & 127) {
@@ -246,7 +266,10 @@ sub cmd2str
 	if (defined $err) {
 		carp("$cmdname had error output:\n".$err);
 	}
-	return wantarray ? split /\n/, $out : $out;
+	if (wantarray) {
+		return split /\n/, $out;
+	}
+	return $out;
 }
 ## use critic
 

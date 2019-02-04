@@ -94,10 +94,11 @@ sub flash_device
 		say "flashing ".PiFlash::State::input("path")." -> ".PiFlash::State::output("path");
 	}
 	say "wait for it to finish - this takes a while, progress not always indicated";
+	my $dd_args = "bs=4M oflag=sync status=progress";
 	if (PiFlash::State::input("type") eq "img") {
 		PiFlash::Command::cmd("dd flash", PiFlash::Command::prog("sudo")." ".PiFlash::Command::prog("dd")
-			." bs=4M if=\"".PiFlash::State::input("path")."\" of=\""
-			.PiFlash::State::output("path")."\" status=progress" );
+			." if=\"".PiFlash::State::input("path")."\" of=\""
+			.PiFlash::State::output("path")."\" $dd_args" );
 	} elsif (PiFlash::State::input("type") eq "zip") {
 		if (PiFlash::State::has_input("NOOBS")) {
 			# format SD and copy NOOBS archive to it
@@ -117,7 +118,7 @@ sub flash_device
 			PiFlash::Command::cmd("format sd card", PiFlash::Command::prog("sudo"),
 				PiFlash::Command::prog("mkfs.$fstype"), "-n", $label, $partition);
 			my $mntdir = PiFlash::State::system("media_dir")."/piflash/sdcard";
-			PiFlash::Command::cmd("reread partition table", PiFlash::Command::prog("sudo"),
+			PiFlash::Command::cmd("reread partition table for NOOBS", PiFlash::Command::prog("sudo"),
 				PiFlash::Command::prog("blockdev"), "--rereadpt", PiFlash::State::output("path"));
 			PiFlash::Command::cmd("create mount point", PiFlash::Command::prog("sudo"),
 				PiFlash::Command::prog("mkdir"), "-p", $mntdir );
@@ -131,19 +132,19 @@ sub flash_device
 			# flash zip archive to SD
 			PiFlash::Command::cmd("unzip/dd flash", PiFlash::Command::prog("unzip")." -p \""
 				.PiFlash::State::input("path")."\" \"".PiFlash::State::input("imgfile")."\" | "
-				.PiFlash::Command::prog("sudo")." ".PiFlash::Command::prog("dd")." bs=4M of=\""
-				.PiFlash::State::output("path")."\" status=progress");
+				.PiFlash::Command::prog("sudo")." ".PiFlash::Command::prog("dd")." of=\""
+				.PiFlash::State::output("path")."\" $dd_args");
 		}
 	} elsif (PiFlash::State::input("type") eq "gz") {
 		# flash gzip-compressed image file to SD
 		PiFlash::Command::cmd("gunzip/dd flash", PiFlash::Command::prog("gunzip")." --stdout \""
 			.PiFlash::State::input("path")."\" | ".PiFlash::Command::prog("sudo")." ".PiFlash::Command::prog("dd")
-			." bs=4M of=\"".PiFlash::State::output("path")."\" status=progress");
+			." of=\"".PiFlash::State::output("path")."\" $dd_args");
 	} elsif (PiFlash::State::input("type") eq "xz") {
 		# flash xz-compressed image file to SD
 		PiFlash::Command::cmd("xz/dd flash", PiFlash::Command::prog("xz")." --decompress --stdout \""
 			.PiFlash::State::input("path")."\" | ".PiFlash::Command::prog("sudo")." ".PiFlash::Command::prog("dd")
-			." bs=4M of=\"".PiFlash::State::output("path")."\" status=progress");
+			." of=\"".PiFlash::State::output("path")."\" $dd_args");
 	}
 	say "- synchronizing buffers";
 	PiFlash::Command::cmd("sync", PiFlash::Command::prog("sync"));
@@ -152,8 +153,38 @@ sub flash_device
 	# resize flag is silently ignored for NOOBS images because it will re-image and resize
 	if (PiFlash::State::has_cli_opt("resize") and not PiFlash::State::has_input("NOOBS")) {
 		say "- resizing the partition";
-		PiFlash::Command::cmd("reread partition table", PiFlash::Command::prog("sudo"),
-			PiFlash::Command::prog("blockdev"), "--rereadpt", PiFlash::State::output("path"));
+		# re-read partition table, use multiple tries if necessary
+		my $tries = 10;
+		while (1) {
+			eval {
+				PiFlash::Command::cmd("reread partition table for resize", PiFlash::Command::prog("sudo"),
+					PiFlash::Command::prog("blockdev"), "--rereadpt", PiFlash::State::output("path"));
+			};
+
+			# check for errors, retry if possible
+			if ($@) {
+				if (ref $@) {
+					# reference means unrecognized error - rethrow the exception
+					die $@;
+				} elsif ($@ =~ /exited with value 1/) {
+					# exit status 1 means retry
+					$tries--;
+					if ($tries > 0) {
+						# wait a second and try again - sync may need to settle
+						sleep 1;
+						next;
+					}
+					# otherwise fail for repeated failed retries
+					die $@;
+				} else {
+					# other unrecognized error - rethrow the exception
+					die $@;
+				}
+			}
+
+			# got through without an error - done
+			last;
+		}
 		my @partitions = grep {/part\s*$/} PiFlash::Command::cmd2str("lsblk - find partitions",
 			PiFlash::Command::prog("lsblk"), "--list", PiFlash::State::output("path"));
 
@@ -165,11 +196,12 @@ sub flash_device
 			}
 			my $sd_name = basename(PiFlash::State::output("path"));
 			my $boot_part = $partitions[0];
-			my $root_part = $partitions[scalar @partitions-1];
-			my $root_fstype = PiFlash::Command::cmd2str( "get root fs type", PiFlash::Command::prog("sudo"),
-				PiFlash::Command::prog("lsblk"), "--noheadings", "-o", "FSTYPE", "/dev/$root_part");
-			my $root_num = slurp("/sys/block/$sd_name/$root_part/partition");
-			chomp $root_num;
+			my $root_num = scalar @partitions;
+			my $root_part = $partitions[$root_num-1];
+			$ENV{LSBLK_DEBUG}="all";
+			my $root_fstype = PiFlash::Command::cmd2str( "get root fs type", PiFlash::Command::prog("lsblk"),
+				"--noheadings", "-o", "FSTYPE", "/dev/$root_part");
+			say "debug: sd_name=$sd_name boot_part=$boot_part root_num=$root_num root_part=$root_part root_fstype=$root_fstype"; # TODO remove
 			if ( $root_fstype =~ /^ext[234]/ ) {
 				# ext2/3/4 filesystem can be resized
 				my @sfdisk_resize_input = ( ", +" );
@@ -182,6 +214,8 @@ sub flash_device
 				say "- resizing the filesystem";
 				PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
 					PiFlash::Command::prog("resize2fs"), "/dev/$root_part");
+			} else {
+				warn "unrecognized filesystem type $root_fstype - resize not attempted";
 			}
 		} else {
 			say "* partition resize skipped due to lack of partition table";

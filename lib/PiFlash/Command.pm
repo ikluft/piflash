@@ -7,12 +7,12 @@ use strict;
 use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
-use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
-use POSIX; # included with perl
 
 package PiFlash::Command;
 
 use autodie;
+use POSIX; # included with perl
+use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
 use Carp qw(carp croak);
 
@@ -149,7 +149,7 @@ sub fork_exec
 	if (@input) {
 		# blocks until input is accepted - this interface reqiuires child commands using input take it before output
 		# because parent process is not multithreaded
-		if (!defined syswrite($child_in_writer, join("\n", @input)."\n")) {
+		if (! print $child_in_writer join("\n", @input)."\n") {
 			PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
 		}
 	}
@@ -174,18 +174,17 @@ sub fork_exec
 					# read all available input for input or hangup events
 					# we do this for hangup because Linux kernel doesn't report input when a hangup occurs
 					my $buffer;
-					while (sysread($fd[$i], $buffer, 1024) != 0) {
+					while (read($fd[$i], $buffer, 1024) != 0) {
 						if (!defined $text[$i]) {
 							$text[$i] = "";
 						}
 						$text[$i] .= $buffer;
-						say "debug buffer[$i]: $buffer"; # TODO remove
 					}
 					if ($events && (POLLHUP)) {
 						# hangup event means this fd (out=0, err=1) was closed by the child
-						say "debug HUP $i"; # TODO remove
 						$done[$i] = 1;
 						$poll->remove($fd[$i]);
+						close $fd[$i];
 					}
 				}
 			}

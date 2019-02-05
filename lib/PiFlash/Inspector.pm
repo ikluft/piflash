@@ -236,6 +236,10 @@ sub collect_device_info
 	if ($output->{mountpoint} ne "") {
 		PiFlash::State->error("output device is mounted - this operation would erase it");
 	}
+	if (!(exists $output->{fstype}) or $output->{fstype} =~ /^\s*$/) {
+		# workaround for apparent bug in lsblk in util-linux which omits requested FSTYPE data
+		$output->{fstype} = get_fstype($output->{path}) // "";
+	}
 	if ($output->{fstype} eq "swap") {
 		PiFlash::State->error("output device is a swap device - this operation would erase it");
 	}
@@ -287,6 +291,7 @@ sub blkparam
 		} elsif ($? != 0) {
 			PiFlash::State->error(sprintf "blkparam($paramname): lsblk exited with value %d", $? >> 8);
 		}
+		chomp $value;
 		$value =~ s/^\s*//; # remove leading whitespace
 		$value =~ s/\s*$//; # remove trailing whitespace
 		$blkdev->{lc $paramname} = $value;
@@ -387,6 +392,49 @@ sub base
 	my $path = shift;
 	my $filename = File::Basename::fileparse($path, ());
 	return $filename;
+}
+
+# get filesystem type info
+# workaround for apparent bug in lsblk (from util-linux) which omits requested FSTYPE data when in the background
+# use blkid or libmagic if it fails
+sub get_fstype
+{
+	my $devpath = shift;
+	my $fstype = PiFlash::Command::cmd2str( "use lsblk to get fs type for $devpath", PiFlash::Command::prog("sudo"),
+		PiFlash::Command::prog("lsblk"), "--nodeps", "--noheadings", "--output", "FSTYPE", $devpath);
+
+	# fallback: use blkid
+	if ((!defined $fstype) or $fstype =~ /^\s*$/) {
+		$fstype = PiFlash::Command::cmd2str( "use blkid to get fs type for $devpath", PiFlash::Command::prog("sudo"),
+			PiFlash::Command::prog("blkid"), "--probe", "--output=value", "--match-tag=TYPE", $devpath);
+
+		# fallback: use File::LibMagic as backup filesystem type lookup 
+		if ((!defined $fstype) or $fstype =~ /^\s*$/) {
+			my $magic = File::LibMagic->new();
+			$fstype = undef;
+			$magic->{flags} |= File::LibMagic::MAGIC_DEVICES; # undocumented trick for equivalent of "file -s" on device
+			my $magic_data = $magic->info_from_filename($devpath);
+			if (PiFlash::State::verbose()) {
+				for my $key (keys %$magic_data) {
+					say "get_fstype: magic_data/$key = ".$magic_data->{$key};
+				}
+			}
+			if ($magic_data->{description} =~ /^Linux rev \d+.\d+ (ext[234]) filesystem data,/) {
+				$fstype=$1;
+			} elsif ($magic_data->{description} =~ /^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),/) {
+				$fstype="vfat";
+			} elsif ($magic_data->{description} =~ /^Linux\/\w+ swap file/) {
+				$fstype="swap";
+			} elsif ($magic_data->{description} =~ /\s+(\w+)\sfilesystem/i) {
+				$fstype=lc $1;
+			}
+		}
+	}
+
+	# lookup failure if we get here
+	defined $fstype and chomp $fstype;
+	PiFlash::State::verbose() and say "get_fstype($devpath) = ".($fstype // "undef");
+	return $fstype;
 }
 
 1;

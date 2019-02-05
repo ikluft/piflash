@@ -6,6 +6,7 @@ use warnings;
 use v5.18.0; # require 2014 or newer version of Perl
 use PiFlash::State;
 use PiFlash::Command;
+use PiFlash::Inspector;
 use PiFlash::Hook;
 
 package PiFlash::MediaWriter;
@@ -198,11 +199,12 @@ sub flash_device
 			my $boot_part = $partitions[0];
 			my $root_num = scalar @partitions;
 			my $root_part = $partitions[$root_num-1];
-			$ENV{LSBLK_DEBUG}="all";
-			my $root_fstype = PiFlash::Command::cmd2str( "get root fs type", PiFlash::Command::prog("lsblk"),
-				"--noheadings", "-o", "FSTYPE", "/dev/$root_part");
-			say "debug: sd_name=$sd_name boot_part=$boot_part root_num=$root_num root_part=$root_part root_fstype=$root_fstype"; # TODO remove
-			if ( $root_fstype =~ /^ext[234]/ ) {
+			my $root_fstype = PiFlash::Inspector::get_fstype("/dev/$root_part");
+			if (PiFlash::State::verbose()) {
+				say "resizing: sd_name=$sd_name boot_part=$boot_part root_num=$root_num root_part=$root_part "
+					."root_fstype=".($root_fstype // "undef");
+			}
+			if ((defined $root_fstype) and $root_fstype =~ /^ext[234]/ ) {
 				# ext2/3/4 filesystem can be resized
 				my @sfdisk_resize_input = ( ", +" );
 				PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
@@ -215,7 +217,7 @@ sub flash_device
 				PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
 					PiFlash::Command::prog("resize2fs"), "/dev/$root_part");
 			} else {
-				warn "unrecognized filesystem type $root_fstype - resize not attempted";
+				warn "unrecognized filesystem type ".($root_fstype // "")." - resize not attempted";
 			}
 		} else {
 			say "* partition resize skipped due to lack of partition table";

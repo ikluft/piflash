@@ -1,15 +1,39 @@
 Change log for PiFlash
 
 {{$NEXT}}
+ [API CHANGE]
+
+ [BUG FIXES]
+
+ [DOCS]
+
+ [ENHANCEMENTS]
+
+ [MAJOR]
+
+ [MINOR]
+
+ [REVISION]
+
+ [SECURITY]
+
+0.0.6 2019-02-05T19:11:47-08:00 America/Los_Angeles
+ - tweaks to RPM spec for release
+
+0.0.5
  - add filesystem resize, including --resize added to command line
  - add --version to command line
- - fixed PiFlash::Inspector SD search which needed to chomp CR's off of string read from /sys
+ - fixed PiFlash::Inspector SD search which needed to chomp CR's off of
+   string read from /sys
  - PiFlash::Hook added
- - cleanups: minor docs tweaks, add blank lines for Dist::Zilla to add VERSION to modules
- - abandon use of Dist::Zilla's plugins for RPM & Deb package generation on release for now
+ - cleanups: minor docs tweaks, add blank lines for Dist::Zilla to add
+   VERSION to modules
+ - abandon use of Dist::Zilla's plugins for RPM & Deb package generation on
+   release for now
 
 0.0.4
- - experiment with automatic generation of RPM and Debian Dpkg files on release
+ - experiment with automatic generation of RPM and Debian Dpkg files on
+   release
 
 0.0.3 2018-10-11T16:47:42-07:00 America/Los_Angeles
  - update installation instructions to reflect piflash's move on GitHub

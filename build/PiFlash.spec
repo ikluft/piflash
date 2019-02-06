@@ -9,8 +9,7 @@ Source:			<% $archive %>
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  perl-interpreter
-BuildRequires:  perl >= 1:v5.18.0
+BuildRequires:  perl-interpreter >= 1:v5.18.0
 BuildRequires:  perl(autodie)
 BuildRequires:  perl(Carp)
 BuildRequires:  perl(ExtUtils::MakeMaker)

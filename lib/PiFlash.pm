@@ -14,6 +14,7 @@ package PiFlash;
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Getopt::Long; # included with perl
 use File::Basename; # included with perl
+use Module::Pluggable require => 1; # RPM: perl-Module-Pluggable, DEB: libmodule-pluggable-perl
 
 # ABSTRACT: Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 
@@ -60,7 +61,15 @@ sub num_readable
 sub piflash
 {
 	# initialize program state storage
-	PiFlash::State->init("system", "input", "output", "cli_opt", "log", "hook");
+	PiFlash::State->init(
+		"cli_opt",		# options received from command line
+		"hook",			# hook functions: callbacks managed by PiFlash::Hook
+		"input",		# input file info from PiFlash::Inspector
+		"log",			# log of commands and events
+		"output",		# output device info from PiFlash::Inspector
+		"plugin",		# plugin modules assigned storage here
+		"system",		# system info from PiFlash::Inspector
+	);
 
 	# collect and validate command-line arguments
 	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize"); };
@@ -73,6 +82,15 @@ sub piflash
 	if (PiFlash::State::has_cli_opt("version")) {
 		say $PiFlash::VERSION;
 		return;
+	}
+
+	# initialize plugins
+	my $plugin_data = PiFlash::State::plugin();
+	foreach my $plugin (PiFlash->plugins) {
+		if ($plugin->can("init")) {
+			$plugin_data->{$plugin} = {};
+			$plugin->init($plugin_data->{$plugin});
+		}
 	}
 
 	# print usage info if 

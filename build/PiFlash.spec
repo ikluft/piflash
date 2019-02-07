@@ -33,6 +33,7 @@ Requires:       perl(IO::Poll)
 Requires:       perl(POSIX)
 Requires:       perl(Exception::Class)
 Requires:       perl(Try::Tiny)
+Requires:       perl(Module::Pluggable)
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 
 %{?perl_default_filter}

@@ -50,26 +50,10 @@ sub AUTOLOAD {
 		}
 		return;
 	} else {
-		# handle class methods
-
-		# Is there a hook of that name?
-		if (!exists $hooks{$called}) {
-			if (PiFlash::State::verbose()) {
-				say "PiFlash::Hook dispatch: no such hook $called - ignored";
-			}
-			return;
-		}
-
-		# call all functions registered in the list for this hook
-		my @result;
-		if (ref $hooks{$called} eq "ARRAY") {
-			foreach my $hook (@{$hooks{$called}}) {
-				my @hook_return = $hook->run();
-				push @result, [@hook_return];
-			}
-		}
-		return @result;
+		# autoloaded class methods run hooks by name
+		run($called, @_);
 	}
+
 }
 
 # add a code reference to a named hook
@@ -86,7 +70,8 @@ sub add
 	push @{$hooks{$name}}, PiFlash::Hook::new({name => $name, code => $coderef, origin => [caller]});
 }
 
-# new() - internal function to instantiate hook object, should be called from add() with coderef & caller parameters
+# new() - internal function to instantiate hook object
+# this should only be called from add() with coderef/caller/origin parameters
 sub new
 {
 	my $class = shift;
@@ -113,7 +98,24 @@ sub new
 # run the hook code
 sub run
 {
-	# TODO
+	my $name = shift;
+
+	# Is there a hook of that name?
+	if (!exists $hooks{$name}) {
+		if (PiFlash::State::verbose()) {
+			say "PiFlash::Hook dispatch: no such hook $name - ignored";
+		}
+		return;
+	}
+
+	# call all functions registered in the list for this hook
+	my @result;
+	if (ref $hooks{$name} eq "ARRAY") {
+		foreach my $hook (@{$hooks{$name}}) {
+			push @result, $hook->{code}(@_);
+		}
+	}
+	return @result;
 }
 
 1;

@@ -10,6 +10,7 @@ use PiFlash::Command;
 package PiFlash::Inspector;
 
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
+use Try::Tiny;
 use File::Basename;
 use File::Slurp qw(slurp);
 use File::LibMagic; # rpm: "dnf install perl-File-LibMagic", deb: "apt-get install libfile-libmagic-perl"
@@ -400,8 +401,11 @@ sub base
 sub get_fstype
 {
 	my $devpath = shift;
-	my $fstype = PiFlash::Command::cmd2str( "use lsblk to get fs type for $devpath", PiFlash::Command::prog("sudo"),
-		PiFlash::Command::prog("lsblk"), "--nodeps", "--noheadings", "--output", "FSTYPE", $devpath);
+	my $fstype;
+	try {
+		$fstype = PiFlash::Command::cmd2str( "use lsblk to get fs type for $devpath", PiFlash::Command::prog("sudo"),
+			PiFlash::Command::prog("lsblk"), "--nodeps", "--noheadings", "--output", "FSTYPE", $devpath);
+	};
 
 	# fallback: use blkid
 	if ((!defined $fstype) or $fstype =~ /^\s*$/) {

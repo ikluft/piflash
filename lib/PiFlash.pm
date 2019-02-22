@@ -14,6 +14,7 @@ package PiFlash;
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Getopt::Long; # included with perl
 use File::Basename; # included with perl
+use File::Path qw(make_path); # RPM: perl-File-Path, DEB: included with perl
 use Module::Pluggable require => 1; # RPM: perl-Module-Pluggable, DEB: libmodule-pluggable-perl
 
 # ABSTRACT: Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
@@ -37,8 +38,8 @@ L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>,
 # print program usage message
 sub usage
 {
-	say STDERR "usage: ".basename($0)." [--verbose] [--resize] input-file output-device";
-	say STDERR "       ".basename($0)." [--verbose] --SDsearch";
+	say STDERR "usage: ".basename($0)." [--verbose] [--resize] [--config conf-file] input-file output-device";
+	say STDERR "       ".basename($0)." [--verbose] [--config conf-file] --SDsearch";
 	say STDERR "       ".basename($0)." --version";
 	exit 1;
 }
@@ -63,6 +64,7 @@ sub piflash
 	# initialize program state storage
 	PiFlash::State->init(
 		"cli_opt",		# options received from command line
+		"config",		# configuration settings loaded from YAML $XDG_CONFIG_DIR/piflash
 		"hook",			# hook functions: callbacks managed by PiFlash::Hook
 		"input",		# input file info from PiFlash::Inspector
 		"log",			# log of commands and events
@@ -72,7 +74,7 @@ sub piflash
 	);
 
 	# collect and validate command-line arguments
-	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize"); };
+	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize", "config:s"); };
 	if ($@) {
 		# in case of failure, add state info if verbose mode is set
 		PiFlash::State->error($@);
@@ -93,6 +95,14 @@ sub piflash
 		}
 	}
 
+	# read configuration
+	my $config_dir = $ENV{XDG_CONFIG_DIR} // $ENV{HOME}."/.local";
+	make_path($config_dir);
+	my $config_file = $config_dir."/piflash";
+	if ( -f $config_file ) {
+		PiFlash::State::config("config", $config_file);
+	}
+
 	# print usage info if 
 	if (($#ARGV != 1) and (!PiFlash::State::has_cli_opt("sdsearch"))) {
 		usage();
@@ -107,6 +117,9 @@ sub piflash
 		PiFlash::Inspector::sd_search();
 		return;
 	}
+
+	# call hook for after reading command-line options
+	PiFlash::Hook::cli_options();
 
 	# set input and output paths
 	PiFlash::State::input("path", $ARGV[0]);

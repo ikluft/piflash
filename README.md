@@ -49,7 +49,7 @@ Some programs and libraries must be installed on the system for piflash to work 
 
 On RPM-based Linux systems (Red Hat, Fedora, CentOS) the following command, run as root, will install the dependencies.
 
-        dnf install coreutils util-linux sudo perl file-libs perl-File-LibMagic perl-IO perl-Exception-Class perl-Try-Tiny perl-Module-Pluggable gzip unzip xz e2fsprogs dosfstools
+        dnf install coreutils util-linux sudo perl file-libs perl-File-LibMagic perl-IO perl-Exception-Class perl-Try-Tiny perl-Module-Pluggable perl-File-Path gzip unzip xz e2fsprogs dosfstools
 
 On Deb-based Linux systems (Debian, Ubuntu, Raspbian) the following command, run as root, will install the dependencies.
 
@@ -60,7 +60,7 @@ On source-based or other Linux distributions, make sure the following are instal
 - programs:
 blockdev, dd, echo, gunzip, lsblk, mkdir, mkfs.vfat, mount, perl, sfdisk, sudo, sync, true, umount, unzip, xz
 - libraries:
-libmagic/file-libs, File::LibMagic (perl), IO (perl), Exception::Class (perl), Try::Tiny (perl)
+libmagic/file-libs, File::LibMagic (perl), IO (perl), Exception::Class (perl), Try::Tiny (perl), Module::Pluggable (perl), File::Path (perl)
 
 ## Piflash script
 

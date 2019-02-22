@@ -95,6 +95,13 @@ sub new
 	return $self;
 }
 
+# check if there are any hooks registered for a name
+sub has
+{
+	my $name = shift;
+	return exists $hooks{$name};
+}
+
 # run the hook code
 sub run
 {

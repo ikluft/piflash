@@ -13,6 +13,7 @@ use v5.18.0; # require 2014 or newer version of Perl
 package PiFlash::State;
 
 use autodie;
+use YAML::XS; # RPM: perl-YAML-LibYAML, DEB: libyaml-libyaml-perl
 use Carp qw(croak);
 
 # ABSTRACT: PiFlash::State class to store configuration, device info and program state
@@ -193,6 +194,34 @@ sub error
 	my $class = shift;
 	my $message = shift;
 	croak "error: ".$message.(verbose() ? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
+}
+
+# import YAML configuration file
+sub import
+{
+	my $name = shift;
+	my $filepath = shift;
+	# if the provided file name exists and ...
+	if ( -f $filepath) {
+		# capture as many YAML documents as can be parsed from the configuration file
+		my @yaml_docs = YAML::XS::LoadFile($filepath);
+
+		# save the first YAML document as the configuration
+		my $yaml_config = shift @yaml_docs;
+		if (ref $yaml_config eq "HASH") {
+			# if it's a hash, then use all its mappings in PiFlash::State::config
+			$PiFlash::State::state->{config} = $yaml_config;
+		} else {
+			# otherwise save the reference in a config entry called config
+			PiFlash::State::config("config", $yaml_config);
+		}
+
+		# if any other YAML documents were parsed, save them as a list in a config called "docs"
+		# these are available for plugins but not currently defined
+		if (@yaml_docs) {
+			PiFlash::State::config("docs", \@yaml_docs);
+		}
+	}
 }
 
 1;

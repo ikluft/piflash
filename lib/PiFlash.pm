@@ -96,11 +96,16 @@ sub piflash
 	}
 
 	# read configuration
-	my $config_dir = $ENV{XDG_CONFIG_DIR} // $ENV{HOME}."/.local";
-	make_path($config_dir);
-	my $config_file = $config_dir."/piflash";
+	my $config_file;
+	if (PiFlash::State::has_cli_opt("config")) {
+		$config_file = PiFlash::State::cli_opt("config");
+	} else {
+		my $config_dir = $ENV{XDG_CONFIG_DIR} // ($ENV{HOME}."/.local");
+		make_path($config_dir);
+		$config_file = $config_dir."/piflash";
+	}
 	if ( -f $config_file ) {
-		PiFlash::State::config("config", $config_file);
+		PiFlash::State::import("config", $config_file);
 	}
 
 	# print usage info if 

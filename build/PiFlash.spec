@@ -34,7 +34,7 @@ Requires:       perl(IO::Poll)
 Requires:       perl(Module::Pluggable)
 Requires:       perl(POSIX)
 Requires:       perl(Try::Tiny)
-Requires:       perl(YAML::XS)
+Requires:       perl(YAML::LibYAML)
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 
 %{?perl_default_filter}

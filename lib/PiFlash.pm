@@ -105,7 +105,7 @@ sub piflash
 		$config_file = $config_dir."/piflash";
 	}
 	if ( -f $config_file ) {
-		PiFlash::State::import("config", $config_file);
+		PiFlash::State::read_config($config_file);
 	}
 
 	# print usage info if 

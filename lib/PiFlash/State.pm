@@ -196,11 +196,11 @@ sub error
 	croak "error: ".$message.(verbose() ? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
 }
 
-# import YAML configuration file
-sub import
+# read YAML configuration file
+sub read_config
 {
-	my $name = shift;
 	my $filepath = shift;
+
 	# if the provided file name exists and ...
 	if ( -f $filepath) {
 		# capture as many YAML documents as can be parsed from the configuration file

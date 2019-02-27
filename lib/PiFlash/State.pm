@@ -204,7 +204,10 @@ sub read_config
 	# if the provided file name exists and ...
 	if ( -f $filepath) {
 		# capture as many YAML documents as can be parsed from the configuration file
-		my @yaml_docs = YAML::XS::LoadFile($filepath);
+		my @yaml_docs = eval { YAML::XS::LoadFile($filepath); };
+		if ($@) {
+			PiFlash::State->error("PiFlash::State::read_config error reading $filepath: $@");
+		}
 
 		# save the first YAML document as the configuration
 		my $yaml_config = shift @yaml_docs;

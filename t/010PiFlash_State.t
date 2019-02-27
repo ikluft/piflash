@@ -5,12 +5,13 @@ use strict;
 use warnings;
 use autodie;
 
-use Test::More tests => 5 * 6 + 6;                      # last test to print
+use Test::More;
 use PiFlash::State;
 
 # initialize program state storage
-my @top_level_params = ("system", "input", "output", "cli_opt", "log");
+my @top_level_params = ("cli_opt", "config", "hook", "input", "log", "output", "plugin", "system");
 PiFlash::State->init(@top_level_params);
+plan tests => (scalar @top_level_params) * 6 + 6;
 
 # test existence of symtab entries
 my $symtab = \%PiFlash::State::;

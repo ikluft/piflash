@@ -6,10 +6,11 @@ use warnings;
 use autodie;
 
 use Test::More;
+use PiFlash;
 use PiFlash::State;
 
 # initialize program state storage
-my @top_level_params = ("cli_opt", "config", "hook", "input", "log", "output", "plugin", "system");
+my @top_level_params = PiFlash::state_categories();
 PiFlash::State->init(@top_level_params);
 plan tests => (scalar @top_level_params) * 6 + 6;
 

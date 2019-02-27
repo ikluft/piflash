@@ -35,6 +35,21 @@ L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>,
 
 =cut
 
+# return default list of state category names
+# this is made available externally so it can be accessed for testing
+sub state_categories {
+	return (
+		"cli_opt",		# options received from command line
+		"config",		# configuration settings loaded from YAML $XDG_CONFIG_DIR/piflash
+		"hook",			# hook functions: callbacks managed by PiFlash::Hook
+		"input",		# input file info from PiFlash::Inspector
+		"log",			# log of commands and events
+		"output",		# output device info from PiFlash::Inspector
+		"plugin",		# plugin modules assigned storage here
+		"system",		# system info from PiFlash::Inspector
+	);
+};
+
 # print program usage message
 sub usage
 {
@@ -62,16 +77,7 @@ sub num_readable
 sub piflash
 {
 	# initialize program state storage
-	PiFlash::State->init(
-		"cli_opt",		# options received from command line
-		"config",		# configuration settings loaded from YAML $XDG_CONFIG_DIR/piflash
-		"hook",			# hook functions: callbacks managed by PiFlash::Hook
-		"input",		# input file info from PiFlash::Inspector
-		"log",			# log of commands and events
-		"output",		# output device info from PiFlash::Inspector
-		"plugin",		# plugin modules assigned storage here
-		"system",		# system info from PiFlash::Inspector
-	);
+	PiFlash::State->init(state_categories());
 
 	# collect and validate command-line arguments
 	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize", "config:s"); };

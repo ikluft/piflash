@@ -6,6 +6,7 @@ use warnings;
 use autodie;
 
 use Test::More tests => 1 + 6*3 + 9*9;                      # last test to print
+use PiFlash;
 use PiFlash::State;
 use PiFlash::Command;
 use Data::Dumper;
@@ -200,12 +201,15 @@ sub test_fork_exec
 }
 
 # initialize program state storage
-my @top_level_params = ("system", "input", "output", "cli_opt", "log");
+my @top_level_params = PiFlash::state_categories();
 PiFlash::State->init(@top_level_params);
 PiFlash::State::cli_opt("verbose", 1);
 
 # strings used for tests
-my $test_string = "Ad astra per alas porci"; # test string: random text intended to look different from normal output
+# test string: random text intended to look different from normal output
+my $test_string = "Ad astra per alas porci";
+# (what it means: Latin for "to the stars on the wings of a pig", motto used by author John Steinbeck after a teacher
+# once told him he'd only be a writer when pigs fly)
 
 # test forking a simple process that returns a true value using fork_child()
 {

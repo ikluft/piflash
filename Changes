@@ -6,8 +6,11 @@ Change log for PiFlash
  [BUG FIXES]
 
  [DOCS]
+ Updated installation package dependencies for RPM & DEB systems
 
  [ENHANCEMENTS]
+ Added YAML config files
+ Added plugin modules and PiFlash::Hook
 
  [MAJOR]
 

@@ -81,8 +81,8 @@ sub init_plugins
 
 	# get list of enabled plugins from command line and config file
 	my %enabled;
-	if (PiFlash::State::has_cli_opts("plugin")) {
-		foreach my $plugin ( split(/[^\w:]+/, PiFlash::State::cli_opts("plugin") // "")) {
+	if (PiFlash::State::has_cli_opt("plugin")) {
+		foreach my $plugin ( split(/[^\w:]+/, PiFlash::State::cli_opt("plugin") // "")) {
 			next if $plugin eq "";
 			$plugin =~ s/^.*:://;
 			$enabled{$plugin} = 1;

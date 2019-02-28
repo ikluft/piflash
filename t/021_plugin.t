@@ -40,7 +40,7 @@ package PiFlash::Plugin::Test3 {
 };
 
 # initialize program state storage
-my @top_level_params = qw(cli_opts config plugin);
+my @top_level_params = qw(cli_opt config plugin);
 PiFlash::State->init(@top_level_params);
 
 # function with tests to run enabled/disabled combinations of test classes
@@ -50,7 +50,7 @@ sub plugin_tests
 	my $bits = shift;
 	my $mode = shift;
 
-	# clear cli_opts/plugin/config in PiFlash::State
+	# clear cli_opt/plugin/config in PiFlash::State
 	foreach my $category (@top_level_params) {
 		$PiFlash::State::state->{$category} = {};
 	}
@@ -75,7 +75,7 @@ sub plugin_tests
 		my $plugin_str = join(",", @plugins);
 		$debug_mode and print STDERR "debug plugin_tests: plugins(".join("", @$bits)."): $plugin_str\n";
 		if ($mode eq "cli") {
-			PiFlash::State::cli_opts("plugin", $plugin_str);
+			PiFlash::State::cli_opt("plugin", $plugin_str);
 		} elsif ($mode eq "cfg") {
 			PiFlash::State::config("plugin", $plugin_str);
 		} else {

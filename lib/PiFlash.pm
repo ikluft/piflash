@@ -73,6 +73,48 @@ sub num_readable
 	return sprintf "%4.2f%s", $num_base, $suffixes[$magnitude];
 }
 
+# initialize enabled plugins
+sub init_plugins
+{
+	# get list of available plugin modules
+	my $plugin_data = PiFlash::State::plugin();
+
+	# get list of enabled plugins from command line and config file
+	my %enabled;
+	if (PiFlash::State::has_cli_opts("plugin")) {
+		foreach my $plugin ( split(/[^\w:]+/, PiFlash::State::cli_opts("plugin") // "")) {
+			next if $plugin eq "";
+			$plugin =~ s/^.*:://;
+			$enabled{$plugin} = 1;
+		}
+	}
+	if (PiFlash::State::has_config("plugin")) {
+		foreach my $plugin ( split(/[^\w:]+/, PiFlash::State::config("plugin") // "")) {
+			next if $plugin eq "";
+			$plugin =~ s/^.*:://;
+			$enabled{$plugin} = 1;
+		}
+	}
+
+	# for each enabled plugin, allocate state storage, load its config (if any) and run its init method
+	my @plugins_available = PiFlash->plugins();
+	foreach my $plugin (@plugins_available) {
+		$plugin =~ /^PiFlash::Plugin::([A-Z]\w+)$/ or next;
+		my $modname = $1;
+		if (exists $enabled{$modname} and $plugin->can("init")) {
+			if (exists $plugin_data->{$modname}) {
+				next; # skip if its storage area exists
+			}
+			my @data;
+			if (exists $plugin_data->{docs}{$modname}) {
+				push @data, $plugin_data->{docs}{$modname};
+			}
+			$plugin_data->{$modname} = {};
+			$plugin->init($plugin_data->{$modname}, @data);
+		}
+	}
+}
+
 # piflash script main routine to be called from exception-handling wrapper
 sub piflash
 {
@@ -80,7 +122,7 @@ sub piflash
 	PiFlash::State->init(state_categories());
 
 	# collect and validate command-line arguments
-	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize", "config:s"); };
+	do { GetOptions (PiFlash::State::cli_opt(), "verbose", "sdsearch", "version", "resize", "config:s", "plugin:s"); };
 	if ($@) {
 		# in case of failure, add state info if verbose mode is set
 		PiFlash::State->error($@);
@@ -90,15 +132,6 @@ sub piflash
 	if (PiFlash::State::has_cli_opt("version")) {
 		say $PiFlash::VERSION;
 		return;
-	}
-
-	# initialize plugins
-	my $plugin_data = PiFlash::State::plugin();
-	foreach my $plugin (PiFlash->plugins) {
-		if ($plugin->can("init")) {
-			$plugin_data->{$plugin} = {};
-			$plugin->init($plugin_data->{$plugin});
-		}
 	}
 
 	# read configuration
@@ -114,10 +147,23 @@ sub piflash
 		PiFlash::State::read_config($config_file);
 	}
 
-	# print usage info if 
-	if (($#ARGV != 1) and (!PiFlash::State::has_cli_opt("sdsearch"))) {
+	# print usage info if there aren't sufficient parameters to do anything
+	my $param_ok = 0;
+	if (PiFlash::State::has_cli_opt("sdsearch")) {
+		$param_ok = 1;
+	}
+	if ($#ARGV == 1 and -f $ARGV[0] and -b $ARGV[1]) {
+		$param_ok = 1;
+	}
+	# TODO insert subcommand processing here
+	if (!$param_ok) {
 		usage();
 	}
+
+	# initialize enabled plugins
+	# this has to be done after command line and configuration processing so we know what the user has enabled
+	# since PiFlash runs root code, plugins are disabled by default
+	init_plugins();
 
 	# collect system info: kernel specs and locations of needed programs
 	PiFlash::Inspector::collect_system_info();

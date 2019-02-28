@@ -82,7 +82,15 @@ sub init
 {
 	## no critic (ProhibitPackageVars)
 	my $class = shift;
-	(defined $PiFlash::State::state) and return; # don't damage data if called again
+	(defined $PiFlash::State::state) and return; # avoid damaging data if called again
+
+	# global security settings for YAML::XS parser
+	# since PiFlash can run parts as root, we don't want any external code to be run without user authorization
+	$YAML::XS::LoadBlessed = 0;
+	$YAML::XS::UseCode = 0;
+	$YAML::XS::LoadCode = 0;
+
+	# instantiate the state object as a singleton (only one instance in the system)
 	$PiFlash::State::state = {};
 	bless $PiFlash::State::state, $class;
 	my $self = $PiFlash::State::state;
@@ -222,7 +230,22 @@ sub read_config
 		# if any other YAML documents were parsed, save them as a list in a config called "docs"
 		# these are available for plugins but not currently defined
 		if (@yaml_docs) {
+			# save the YAML doc structures as a list
 			PiFlash::State::config("docs", \@yaml_docs);
+
+			# the first doc must be the table of contents with a list of metadata about following docs
+			# others after that are categorized by the plugin name in the metadata
+			my $toc = $yaml_docs[0];
+			if (ref $toc eq "ARRAY") {
+				PiFlash::State::plugin("docs", {toc => $toc});
+				my $docs = PiFlash::State::plugin("docs");
+				for (my $i=1; $i < scalar @yaml_docs; $i++) {
+					if (ref $yaml_docs[$i] eq "HASH" and exists $yaml_docs[$i]{plugin}) {
+						my $type = $yaml_docs[$i]{plugin};
+						$docs->{$type} = $yaml_docs[$i];
+					}
+				}
+			}
 		}
 	}
 }

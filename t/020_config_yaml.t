@@ -30,7 +30,7 @@ sub yaml_tests
 	my $config = PiFlash::State::config();
 	$debug_mode and warn "debug: config:\n".PiFlash::State::odump($config,0);
 	if ($good_yaml) {
-		is(scalar $@, '', "$filepath 1 ($good_str): no exceptions");
+		is("$@", '', "$filepath 1 ($good_str): no exceptions");
 		isnt(scalar keys %$config, 0, "$filepath 2 ($good_str): non-empty config");
 
 		# direct load the config file and store it like in PiFlash::State::read_config for comparison
@@ -48,7 +48,7 @@ sub yaml_tests
 		$debug_mode and warn "debug: compare\n".PiFlash::State::odump($doc,0);
 		is_deeply($config, $doc, "$filepath 3 ($good_str): content match");
 	} else {
-		isnt(scalar $@, '', "$filepath 1 ($good_str): expected exception");
+		isnt("$@", '', "$filepath 1 ($good_str): expected exception");
 	}
 }
 

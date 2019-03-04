@@ -4,6 +4,7 @@ Change log for PiFlash
  [API CHANGE]
 
  [BUG FIXES]
+ require Linux platform to build or test, in response to reports of automated tests failing on unsupported FreeBSD
 
  [DOCS]
 
@@ -12,6 +13,7 @@ Change log for PiFlash
  [MAJOR]
 
  [MINOR]
+ change Dist::Zilla configuration to use ModuleBuild instead of ExtUtils::MakeMaker
 
  [REVISION]
 

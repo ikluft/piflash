@@ -6,6 +6,7 @@ Change log for PiFlash
  [BUG FIXES]
 
  [DOCS]
+ remove automatic generation of README from POD in bin/piflash - it's redundant with README.md needed for GitHub
 
  [ENHANCEMENTS]
 

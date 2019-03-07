@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use autodie;
 
-use Test::More tests => 1 + 6*3 + 9*9;                      # last test to print
+use Test::More;
 use PiFlash;
 use PiFlash::State;
 use PiFlash::Command;
@@ -200,27 +200,15 @@ sub test_fork_exec
 	ok(check_cmd_log("err", $params->{expected_err}), "$test_set: error log match");
 }
 
-# initialize program state storage
-my @top_level_params = PiFlash::state_categories();
-PiFlash::State->init(@top_level_params);
-PiFlash::State::cli_opt("verbose", 1);
+#
+# lists of tests
+#
 
 # strings used for tests
 # test string: random text intended to look different from normal output
 my $test_string = "Ad astra per alas porci";
 # (what it means: Latin for "to the stars on the wings of a pig", motto used by author John Steinbeck after a teacher
 # once told him he'd only be a writer when pigs fly)
-
-# test forking a simple process that returns a true value using fork_child()
-{
-	my $pid = PiFlash::Command::fork_child(sub {
-		# in child process
-		return 0; # 0 = success on exit of a program; test is successful if received by parent process
-	});
-	waitpid( $pid, 0 );
-	my $returncode = $? >> 8;
-	is($returncode, 0, "simple fork test");
-}
 
 # test PiFlash::Command::prog() and check for existence of prerequisite programs for following tests
 my @prog_tests = (
@@ -239,30 +227,6 @@ my @prog_tests = (
 		progname => "xyzzy-notfound",
 	},
 );
-
-# run fork_exec() tests
-PiFlash::Command::prog(); # init cache
-{
-	my $count = 0;
-	foreach my $prog_test (@prog_tests) {
-		$count++;
-		$prog_test->{test_set_suffix} = $count;
-		test_prog($prog_test);
-	}
-}
-
-# use prog cache from previous tests to check for existence of prerequisite programs for following tests
-my $prog = PiFlash::State::system("prog");
-my @prog_names = qw(cat echo sh kill);
-my @missing;
-foreach my $progname (@prog_names) {
-	if (!exists $prog->{$progname}) {
-		push @missing, $progname;
-	}
-}
-if (@missing) {
-	BAIL_OUT("missing command required for tests: ".join(" ", @missing));
-}
 
 # data for fork_exec() test sets
 my @fork_exec_tests = (
@@ -367,6 +331,47 @@ my @fork_exec_tests = (
 		expected_signal => "signal \$signal",
 	},
 );
+plan tests => 1 + (scalar @prog_tests)*3 + (scalar @fork_exec_tests)*9;
+
+# initialize program state storage
+my @top_level_params = PiFlash::state_categories();
+PiFlash::State->init(@top_level_params);
+PiFlash::State::cli_opt("verbose", 1); # required to keep logs of commands
+
+# test forking a simple process that returns a true value using fork_child()
+{
+	my $pid = PiFlash::Command::fork_child(sub {
+		# in child process
+		return 0; # 0 = success on exit of a program; test is successful if received by parent process
+	});
+	waitpid( $pid, 0 );
+	my $returncode = $? >> 8;
+	is($returncode, 0, "simple fork test");
+}
+
+# run fork_exec() tests
+PiFlash::Command::prog(); # init cache
+{
+	my $count = 0;
+	foreach my $prog_test (@prog_tests) {
+		$count++;
+		$prog_test->{test_set_suffix} = $count;
+		test_prog($prog_test);
+	}
+}
+
+# use prog cache from previous tests to check for existence of prerequisite programs for following tests
+my $prog = PiFlash::State::system("prog");
+my @prog_names = qw(cat echo sh kill);
+my @missing;
+foreach my $progname (@prog_names) {
+	if (!exists $prog->{$progname}) {
+		push @missing, $progname;
+	}
+}
+if (@missing) {
+	BAIL_OUT("missing command required for tests: ".join(" ", @missing));
+}
 
 # run fork_exec() tests
 {

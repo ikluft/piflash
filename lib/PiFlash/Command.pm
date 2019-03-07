@@ -295,7 +295,7 @@ sub prog
 
 	# if we didn't have the location of the program, look for it and cache the result
 	my $envprog = (uc $progname)."_PROG";
-	$envprog =~ s/\W+/_/g; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
+	$envprog =~ s/[\W-]+/_/g; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
 	if (exists $ENV{$envprog} and -x $ENV{$envprog}) {
 		$prog->{$progname} = $ENV{$envprog};
 		return $prog->{$progname};
@@ -311,7 +311,7 @@ sub prog
 
 	# if we get here, we didn't find a known secure location for the program
 	PiFlash::State->error("unknown secure location for $progname - install it or set "
-			.(uc $progname."_PROG")." to point to it");
+			."$envprog to point to it");
 }
 ## use critic
 

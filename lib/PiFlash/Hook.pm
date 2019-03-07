@@ -3,7 +3,7 @@
 
 use strict;
 use warnings;
-use v5.18.0; # require 2014 or newer version of Perl
+use v5.14.0; # require 2011 or newer version of Perl
 use PiFlash::State;
 
 package PiFlash::Hook;

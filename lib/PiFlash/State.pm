@@ -28,7 +28,8 @@ use Carp qw(croak);
  PiFlash::State->init(@categories);
 
  # core functions
- $bool = PiFlash::State::verbose()
+ $bool_verbose_mode = PiFlash::State::verbose()
+ $bool_logging_mode = PiFlash::State::logging()
  PiFlash::State::odump
  PiFlash::State->error("error message");
 
@@ -150,7 +151,13 @@ sub verbose
 	return PiFlash::State::cli_opt("verbose") // 0;
 }
 
-# dump data structure recursively, part of verbose state output
+# return boolean value for logging mode (recording run data without printing verbose messages, intended for testing)
+sub logging
+{
+	return PiFlash::State::cli_opt("logging") // 0;
+}
+
+# dump data structure recursively, part of verbose/logging state output
 # intended as a lightweight equivalent of Data::Dumper without requiring installation of an extra package
 # object method
 sub odump
@@ -209,7 +216,8 @@ sub error
 	## no critic (ProhibitPackageVars)
 	my $class = shift;
 	my $message = shift;
-	croak "error: ".$message.(verbose() ? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
+	croak "error: ".$message.((verbose() or logging())
+		? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
 }
 
 # read YAML configuration file

@@ -65,7 +65,7 @@ sub cmd_log
 {
 	# record all command return codes, stdout & stderr in a new top-level store in State
 	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
-	if (PiFlash::State::verbose()) {
+	if (PiFlash::State::verbose() or PiFlash::State::logging()) {
 		my $log = PiFlash::State::log();
 		if (!exists $log->{cmd}) {
 			$log->{cmd} = [];

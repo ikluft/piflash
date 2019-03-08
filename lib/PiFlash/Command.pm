@@ -272,6 +272,16 @@ sub cmd2str
 }
 ## use critic
 
+# generate name of environment variable for where to find a command
+# this is broken out as a separate function for tests to use it
+sub envprog
+{
+	my $progname = shift;
+	my $envprog = (uc $progname)."_PROG";
+	$envprog =~ s/[\W-]+/_/g; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
+	return $envprog;
+}
+
 # look up secure program path
 ## no critic (RequireFinalReturn)
 sub prog
@@ -294,8 +304,7 @@ sub prog
 	}
 
 	# if we didn't have the location of the program, look for it and cache the result
-	my $envprog = (uc $progname)."_PROG";
-	$envprog =~ s/[\W-]+/_/g; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
+	my $envprog = envprog($progname);
 	if (exists $ENV{$envprog} and -x $ENV{$envprog}) {
 		$prog->{$progname} = $ENV{$envprog};
 		return $prog->{$progname};

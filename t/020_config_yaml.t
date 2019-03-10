@@ -17,8 +17,11 @@ my $debug_mode = exists $ENV{DEBUG};
 sub yaml_tests
 {
 	my $filepath = shift;
-	my $good_yaml = shift;
-	my $good_str = $good_yaml ? "good" : "bad";
+	my $flags = shift;
+	if (!exists $flags->{bad}) {
+		$flags->{good} = 1; # if not bad, add good flag so it shows up on the flag summary string
+	}
+	my $flag_str = join " ", sort keys %$flags;
 
 	# clear config in PiFlash::State
 	$PiFlash::State::state->{config} = {};
@@ -29,9 +32,9 @@ sub yaml_tests
 	# run tests
 	my $config = PiFlash::State::config();
 	$debug_mode and warn "debug: config:\n".PiFlash::State::odump($config,0);
-	if ($good_yaml) {
-		is("$@", '', "$filepath 1 ($good_str): no exceptions");
-		isnt(scalar keys %$config, 0, "$filepath 2 ($good_str): non-empty config");
+	if (!exists $flags->{bad}) {
+		is("$@", '', "$filepath 1 ($flag_str): no exceptions");
+		isnt(scalar keys %$config, 0, "$filepath 2 ($flag_str): non-empty config");
 
 		# direct load the config file and store it like in PiFlash::State::read_config for comparison
 		# if it's a map, use it directly
@@ -46,14 +49,21 @@ sub yaml_tests
 			$doc->{docs} = \@direct_load;
 		}
 		$debug_mode and warn "debug: compare\n".PiFlash::State::odump($doc,0);
-		is_deeply($config, $doc, "$filepath 3 ($good_str): content match");
+		is_deeply($config, $doc, "$filepath 3 ($flag_str): content match");
+
+		# perform YAML document tests when table of contents (TOC) flag is enabled
+		if (exists $flags->{toc} and $flags->{toc}) {
+			my $toc = shift @direct_load;
+			is(ref $toc, "ARRAY", "TOC doc is a list");
+
+		}
 	} else {
-		isnt("$@", '', "$filepath 1 ($good_str): expected exception");
+		isnt("$@", '', "$filepath 1 ($flag_str): expected exception");
 	}
 }
 
 # initialize program state storage
-my @top_level_params = ("config");
+my @top_level_params = ("config", "plugin");
 PiFlash::State->init(@top_level_params);
 
 # read list of test input files from subdirectory with same basename as this script
@@ -65,28 +75,49 @@ opendir(my $dh, $input_dir) or BAIL_OUT("can't open $input_dir directory");
 my @files = sort grep { /^[^.]/ and -f "$input_dir/$_" } readdir($dh);
 closedir $dh;
 
+# load test metadata
+my @test_metadata = YAML::XS::LoadFile("$input_dir/000-test-metadata.yml");
+my $metadata;
+if (ref $test_metadata[0] eq "HASH") {
+	$metadata = $test_metadata[0];
+}
+
 # count files by good and bad YAML syntax
 my $good_total = 0;
 my $bad_total = 0;
+my $toc_total = 0;
 foreach my $file ( @files ) {
-	if ($file =~ /-bad.yml$/) {
+	my $flags = {};
+	if ($metadata and exists $metadata->{$file}) {
+		if (ref $metadata->{$file} eq "HASH") {
+			$flags = $metadata->{$file};
+		}
+	}
+	if (exists $flags->{bad}) {
 		$bad_total++;
 	} else {
 		$good_total++;
+		if (exists $flags->{toc}) {
+			$toc_total++;
+		}
 	}
 }
 
-# compute number of tests: 3 tests in yaml_tests() x n test files
-plan tests => 3 * $good_total + 1 * $bad_total;
+# compute number of tests: (flags are read from 000-test-metadata.yml)
+#   1 test for files marked with "bad" flag
+#   3 tests for files with good syntax
+#   1 extra test on files marked with the "toc" (table of contents) flag
+plan tests => 1 * $bad_total + 3 * $good_total + 1 * $toc_total;
 
 # run yaml_tests() for each file
 foreach my $file ( @files ) {
-	# flag for good YAML formatting is set true unless filename ends in "-bad"
-	my $good_yaml = 1;
-	if ($file =~ /-bad.yml$/) {
-		$good_yaml = 0;
+	my $flags = {};
+	if ($metadata and exists $metadata->{$file}) {
+		if (ref $metadata->{$file} eq "HASH") {
+			$flags = $metadata->{$file};
+		}
 	}
-	yaml_tests("$input_dir/$file", $good_yaml);
+	yaml_tests("$input_dir/$file", $flags);
 }
 
 1;

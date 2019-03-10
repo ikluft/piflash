@@ -5,7 +5,9 @@ foo: bar
 - type: Test3
 ---
 data: Test1
+foo: bar
 ---
 data: Test2
+ping: pong
 ---
 data: Test3

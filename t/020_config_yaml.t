@@ -52,10 +52,35 @@ sub yaml_tests
 		is_deeply($config, $doc, "$filepath 3 ($flag_str): content match");
 
 		# perform YAML document tests when table of contents (TOC) flag is enabled
+		# these extra tests are counted in the $toc_total
 		if (exists $flags->{toc} and $flags->{toc}) {
 			my $toc = shift @direct_load;
-			is(ref $toc, "ARRAY", "TOC doc is a list");
+			is(ref $toc, "ARRAY", "$filepath 4 ($flag_str): TOC doc is a list");
 
+			# check if plugin-typed YAML document attachments are stored correctly by name for plugins
+			my $docs_ok = 1;
+			my $plugin_docs = PiFlash::State::plugin("docs");
+			for (my $i=0; $i < scalar @direct_load; $i++) {
+				my $doc = $direct_load[$i];
+				my $type = $toc->[$i]{type};
+				(defined $type) or next;
+				if (ref $doc eq "HASH") {
+					if (!exists $plugin_docs->{$type}) {
+						$docs_ok = 0;
+						last;
+					}
+					if (ref $plugin_docs->{$type} ne "HASH") {
+						$docs_ok = 0;
+						last;
+					}
+					# for brevity we only compare keys between the two hashes - test data should use different keys
+					if (join(" ", sort keys %{$plugin_docs->{$type}}) ne join(" ", sort keys %$doc)) {
+						$docs_ok = 0;
+						last;
+					}
+				}
+			}
+			ok($docs_ok, "$filepath 5 ($flag_str): plugin docs saved by name");
 		}
 	} else {
 		isnt("$@", '', "$filepath 1 ($flag_str): expected exception");
@@ -106,8 +131,8 @@ foreach my $file ( @files ) {
 # compute number of tests: (flags are read from 000-test-metadata.yml)
 #   1 test for files marked with "bad" flag
 #   3 tests for files with good syntax
-#   1 extra test on files marked with the "toc" (table of contents) flag
-plan tests => 1 * $bad_total + 3 * $good_total + 1 * $toc_total;
+#   2 extra tests on files marked with the "toc" (table of contents) flag
+plan tests => 1 * $bad_total + 3 * $good_total + 2 * $toc_total;
 
 # run yaml_tests() for each file
 foreach my $file ( @files ) {

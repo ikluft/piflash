@@ -175,7 +175,9 @@ sub odump
 		# process scalar reference
 		return ("    " x $level).($$obj // "undef")."\n";
 	}
-	if (ref $obj eq "HASH" or ref $obj eq "PiFlash::State") {
+	if (ref $obj eq "HASH" or ref $obj eq "PiFlash::State"
+		or (ref $obj =~ /^PiFlash::/ and $obj->isa("PiFlash::Object")))
+	{
 		# process hash reference
 		my $str = "";
 		foreach my $key (sort {lc $a cmp lc $b} keys %$obj) {
@@ -256,8 +258,8 @@ sub read_config
 				PiFlash::State::plugin("docs", {toc => $toc});
 				my $docs = PiFlash::State::plugin("docs");
 				for (my $i=1; $i < scalar @yaml_docs; $i++) {
-					if (ref $yaml_docs[$i] eq "HASH" and exists $yaml_docs[$i]{plugin}) {
-						my $type = $yaml_docs[$i]{plugin};
+					if (ref $yaml_docs[$i] eq "HASH" and exists $toc->[$i-1]{type}) {
+						my $type = $toc->[$i-1]{type};
 						$docs->{$type} = $yaml_docs[$i];
 					}
 				}

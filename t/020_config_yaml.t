@@ -8,6 +8,7 @@ use Test::More;
 use File::Basename;
 use PiFlash::State;
 use YAML::XS;
+use Data::Dumper;
 
 # detect debug mode from environment
 # run as "DEBUG=1 perl -Ilib t/011PiFlash_Command.t" to get debug output to STDERR
@@ -31,7 +32,7 @@ sub yaml_tests
 
 	# run tests
 	my $config = PiFlash::State::config();
-	$debug_mode and warn "debug: config:\n".PiFlash::State::odump($config,0);
+	$debug_mode and warn "debug: config:\n".Dumper($PiFlash::State::state);
 	if (!exists $flags->{bad}) {
 		is("$@", '', "$filepath 1 ($flag_str): no exceptions");
 		isnt(scalar keys %$config, 0, "$filepath 2 ($flag_str): non-empty config");
@@ -48,34 +49,44 @@ sub yaml_tests
 		if (@direct_load) {
 			$doc->{docs} = \@direct_load;
 		}
-		$debug_mode and warn "debug: compare\n".PiFlash::State::odump($doc,0);
+		$debug_mode and warn "debug: compare\n".Dumper($doc);
 		is_deeply($config, $doc, "$filepath 3 ($flag_str): content match");
 
 		# perform YAML document tests when table of contents (TOC) flag is enabled
+		# this tests how we use YAML documents as attachments for plugins
 		# these extra tests are counted in the $toc_total
 		if (exists $flags->{toc} and $flags->{toc}) {
 			my $toc = shift @direct_load;
 			is(ref $toc, "ARRAY", "$filepath 4 ($flag_str): TOC doc is a list");
 
-			# check if plugin-typed YAML document attachments are stored correctly by name for plugins
+			# check if plugin-typed YAML document attachments are stored correctly by plugin name
 			my $docs_ok = 1;
 			my $plugin_docs = PiFlash::State::plugin("docs");
 			for (my $i=0; $i < scalar @direct_load; $i++) {
+				($i < scalar @$toc) or next;
 				my $doc = $direct_load[$i];
 				my $type = $toc->[$i]{type};
 				(defined $type) or next;
 				if (ref $doc eq "HASH") {
+					# check if the storage for the plugin's data exists
 					if (!exists $plugin_docs->{$type}) {
 						$docs_ok = 0;
+						$debug_mode and print STDERR "020_config_yaml.t debug: no $type in plugin_docs\n";
 						last;
 					}
 					if (ref $plugin_docs->{$type} ne "HASH") {
 						$docs_ok = 0;
+						$debug_mode and print STDERR "020_config_yaml.t debug: $type not a HASH ref\n";
 						last;
 					}
-					# for brevity we only compare keys between the two hashes - test data should use different keys
-					if (join(" ", sort keys %{$plugin_docs->{$type}}) ne join(" ", sort keys %$doc)) {
+
+					# for brevity we only compare keys between each source/destination set of hashes
+					# so test data should use different keys for different plugins' data
+					my $dest_str = join(" ", sort keys %{$plugin_docs->{$type}});
+					my $src_str = join(" ", sort keys %$doc);
+					if (join(" ", $dest_str ne $src_str)) {
 						$docs_ok = 0;
+						$debug_mode and print STDERR "020_config_yaml.t debug: ($dest_str) ne ($src_str)\n";
 						last;
 					}
 				}

@@ -258,6 +258,7 @@ sub read_config
 				PiFlash::State::plugin("docs", {toc => $toc});
 				my $docs = PiFlash::State::plugin("docs");
 				for (my $i=1; $i < scalar @yaml_docs; $i++) {
+					($i <= scalar @$toc) or next;
 					if (ref $yaml_docs[$i] eq "HASH" and exists $toc->[$i-1]{type}) {
 						my $type = $toc->[$i-1]{type};
 						$docs->{$type} = $yaml_docs[$i];

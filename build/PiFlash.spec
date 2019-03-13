@@ -66,7 +66,7 @@ make test
 
 %files
 %defattr(-,root,root,-)
-%doc Changes dist.ini LICENSE META.json README README.md
+%doc Changes dist.ini LICENSE META.json README.md
 %{perl_vendorlib}/*
 %{_mandir}/man3/*.3*
 %{_mandir}/man1/*.1*

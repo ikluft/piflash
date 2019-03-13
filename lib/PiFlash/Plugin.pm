@@ -37,18 +37,18 @@ use Module::Pluggable require => 1, search_path => [__PACKAGE__]; # RPM: perl-Mo
 
 =head1 DESCRIPTION
 
- The PiFlash::Plugin module has class methods which manage all the plugins and
- instance methods which are the base class inherited by each plugin.  L<PiFlash::Hook>
- can be used to receive callback events at various stages of the PiFlash run.
+The PiFlash::Plugin module has class methods which manage all the plugins and
+instance methods which are the base class inherited by each plugin.  L<PiFlash::Hook>
+can be used to receive callback events at various stages of the PiFlash run.
 
- To create a plugin for PiFlash, write a new class under the namespace of PiFlash::Plugin,
- such as PiFlash::Plugin::Example.  All PiFlash plugins must be named under and inherit
- from PiFlash::Plugin. Otherwise they will not be enabled or accessible.
+To create a plugin for PiFlash, write a new class under the namespace of PiFlash::Plugin,
+such as PiFlash::Plugin::Example.  All PiFlash plugins must be named under and inherit
+from PiFlash::Plugin. Otherwise they will not be enabled or accessible.
 
- If the plugin class contains or inherits an init() method, it will be called when the
- plugin object is created. You don't need to write a new() routine, and shouldn't, because
- PiFlash::Plugin provides one which must be used by all plugins. That will be called by
- PiFlash during plugin initialization.
+If the plugin class contains or inherits an init() method, it will be called when the
+plugin object is created. You don't need to write a new() routine, and shouldn't, because
+PiFlash::Plugin provides one which must be used by all plugins. That will be called by
+PiFlash during plugin initialization.
 
 =head1 SEE ALSO
 

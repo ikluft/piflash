@@ -257,8 +257,6 @@ sub flash_device
 			} else {
 				warn "unrecognized filesystem type ".($fstype_root // "")." - resize not attempted";
 			}
-		} else {
-			say "* partition resize skipped due to lack of partition table";
 		}
 
 		# check if any hooks are registered for filesystem access

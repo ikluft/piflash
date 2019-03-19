@@ -56,6 +56,22 @@ sub state_categories {
 	);
 };
 
+# return list of command-line options in Getopt::Long-compatible format
+sub cli_def
+{
+	return (
+		"config:s",		# configuration file
+		"help",			# display help/usage and exit
+		"logging",		# command logging (similar to verbose mode without printing anything)
+		"plugin:s",		# list of user-enabled plugins (also enabled from config file)
+		"resize",		# resize root filesystem after writing to SD card
+		"sdsearch",		# display list of SD card devices and exit
+		"test:s%",		# set test flags (used by unit tests only)
+		"verbose",		# log and print lots of actions for troubleshooting
+		"version",		# print version number and exit
+	);
+}
+
 # print program usage message
 sub usage
 {
@@ -69,7 +85,7 @@ sub usage
 	push @msg, "usage: ".basename($0)." [--verbose | --logging] [--resize] [--config conf-file] input-file output-device";
 	push @msg, "       ".basename($0)." [--verbose | --logging] [--config conf-file] --SDsearch";
 	push @msg, "       ".basename($0)." --version";
-	PiFlash::State->error(join("\n", @msg)."\n");
+	die join("\n", @msg)."\n";
 }
 
 # print numbers with readable suffixes for megabytes, gigabytes, terabytes, etc
@@ -100,16 +116,7 @@ sub process_cli
 				push @warn, $_[0];
 			}
 		};
-		my $getopt_result = eval { GetOptionsFromArray ($cmdline, PiFlash::State::cli_opt(),
-			"config:s",
-			"logging",
-			"plugin:s",
-			"resize",
-			"sdsearch",
-			"test:s%",
-			"verbose",
-			"version",
-			)
+		my $getopt_result = eval { GetOptionsFromArray ($cmdline, PiFlash::State::cli_opt(), PiFlash::cli_def())
 		};
 		if ($@) {
 			# in case of failure, add state info if verbose or logging mode is set
@@ -126,7 +133,7 @@ sub process_cli
 	# check for errors such as insufficient parameters or missing files
 	my @errors;
 	my $cli_query_mode = 0;
-	foreach my $opt ( qw(sdsearch version) ) {
+	foreach my $opt ( qw(help sdsearch version) ) {
 		if (PiFlash::State::has_cli_opt($opt)) {
 			$cli_query_mode = 1;
 			last;
@@ -169,6 +176,11 @@ sub piflash
 
 	# process command line
 	process_cli();
+
+	# if --help option was selected, print usage info and exit
+	if (PiFlash::State::has_cli_opt("help")) {
+		usage();
+	}
 
 	# if --version option was selected, print the version number and exit
 	if (PiFlash::State::has_cli_opt("version")) {

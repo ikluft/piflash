@@ -114,35 +114,59 @@ sub init
 
 			# accessor fieldname()
 			if (! $class->can($top_level_param)) { 
-				*{$class."::".$top_level_param} = sub {
-					my $name = shift;
-					my $value = shift;
-					if (defined $value) {
-						# got name & value - set the new value for name
-						$self->{$top_level_param}{$name} = $value;
-						return;
-					} elsif (defined $name) {
-						# got only name - return the value/ref of name
-						return (exists $self->{$top_level_param}{$name})
-							? $self->{$top_level_param}{$name}
-							: undef;
-					} else {
-						# no name or value - return ref to top-level hash (top_level_parameter from init() context)
-						return $self->{$top_level_param};
-					}
-				};
+				*{$class."::".$top_level_param} = sub { return $class->accessor($top_level_param, @_); };
 			}
 
 			# accessor has_fieldname()
 			if (! $class->can("has_".$top_level_param)) {
-				*{$class."::has_".$top_level_param} = sub {
-					my $name = shift;
-					return ((exists $self->{$top_level_param}) and (exists $self->{$top_level_param}{$name}));
-				};
+				*{$class."::has_".$top_level_param} = sub { return $class->has($top_level_param, @_); };
 			}
 		}
 	}
 	return;
+}
+
+# get top level state
+sub state
+{
+	my ($package, $filename, $line) = caller;
+	($package eq "PiFlash::State" or $package->isa("PiFlash::State"))
+		or die "internal-use-only function called by $package at $filename line $line";
+	return $PiFlash::State::state;
+}
+
+# state value get/set accessor
+# class method
+sub accessor {
+	my $class = shift;
+	my $top_level_param = shift;
+	my $name = shift;
+	my $value = shift;
+	my $self = $class->state();
+	if (defined $value) {
+		# got name & value - set the new value for name
+		$self->{$top_level_param}{$name} = $value;
+		return;
+	} elsif (defined $name) {
+		# got only name - return the value/ref of name
+		return (exists $self->{$top_level_param}{$name})
+			? $self->{$top_level_param}{$name}
+			: undef;
+	} else {
+		# no name or value - return ref to top-level hash (top_level_parameter from init() context)
+		return $self->{$top_level_param};
+	}
+}
+
+# check if a top level state has a key
+# class method
+sub has
+{
+	my $class = shift;
+	my $self = $class->state();
+	my $top_level_param = shift;
+	my $name = shift;
+	return ((exists $self->{$top_level_param}) and (exists $self->{$top_level_param}{$name}));
 }
 
 # return boolean value for verbose mode

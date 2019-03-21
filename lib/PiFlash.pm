@@ -25,15 +25,18 @@ use File::Path qw(make_path); # RPM: perl-File-Path, DEB: included with perl
 
 =head1 DESCRIPTION
 
-See the L<piflash> program for details on installation and command-line usage.
+See the L<piflash> program for details on installation and running the program at the command line.
 
-This is the top-level command-line processing level of the L<piflash> script to flash an SD card for a Raspberry Pi
-single-board computer. The main function serves as an exception catching wrapper which calls the piflash function
+The PiFlash module is the top-level command-line processing level of the L<piflash> script
+to flash an SD card for a Raspberry Pi single-board computer.
+The main function serves as an exception catching wrapper which calls the piflash function
 to process the command line.
 
 =head1 SEE ALSO
 
 L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>, L<PiFlash::State>
+
+PiFlash online resources L<https://github.com/ikluft/piflash/blob/master/doc/resources.md>
 
 L<https://metacpan.org/release/PiFlash> - main PiFlash release page on MetaCPAN
 

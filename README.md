@@ -51,11 +51,13 @@ Once installed, you can run `perldoc` from a shell to read the documentation:
 * [PiFlash::Plugin](https://metacpan.org/pod/PiFlash::Plugin) - plugin extension interface for PiFlash
 * [PiFlash::State](https://metacpan.org/pod/PiFlash::State) - PiFlash::State class to store configuration, device info and program state
 
-## Bug reporting
+## Participation in PiFlash
 
-Report bugs via GitHub at https://github.com/ikluft/piflash/issues
+See the [Contributing to PiFlash](CONTRIBUTING.md) docs.
 
-Submit your own suggested modifications as GitHub pull requests https://github.com/ikluft/piflash/pulls ; see the GitHub help on pull requests at https://help.github.com/en/articles/about-pull-requests if needed. 
+* [Code of Conduct](CONTRIBUTING.md#code-of-conduct)
+* [Submitting an issue](CONTRIBUTING.md#submitting-an-issue)
+* [Submitting a Pull Request](CONTRIBUTING.md#submitting-a-pull-request)
 
 When reporting a bug, please include the full output using the --verbose option. That will include all of the
 program's state information, which will help understand the bigger picture what was happening on your system.

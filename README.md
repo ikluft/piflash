@@ -18,6 +18,8 @@ This script writes (or "flashes") an SD card for a Raspberry Pi. It includes saf
 
 * [PiFlash program usage and installation](https://metacpan.org/pod/distribution/PiFlash/bin/piflash)
 * [Online resources for PiFlash](https://github.com/ikluft/piflash/blob/master/doc/resources.md)
+  * [Where to download Raspberry Pi bootable images](https://github.com/ikluft/piflash/blob/master/doc/resources.md#where-to-download-raspberry-pi-bootable-images)
+  * [Presentations and Articles](https://github.com/ikluft/piflash/blob/master/doc/resources.md#presentations-and-articles)
 * [PiFlash release on CPAN](https://metacpan.org/release/PiFlash)
 * [PiFlash source code on GitHub](https://github.com/ikluft/piflash)
 
@@ -27,7 +29,6 @@ Once installed, you can run `perldoc` from a shell to read the documentation:
     % perldoc piflash
  
 ## Developer documentation
-
 
 * [PiFlash](https://metacpan.org/pod/PiFlash) - Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 * [PiFlash::Command](https://metacpan.org/pod/PiFlash::Command) - process/command running utilities for piflash
@@ -41,6 +42,8 @@ Once installed, you can run `perldoc` from a shell to read the documentation:
 ## Bug reporting
 
 Report bugs via GitHub at https://github.com/ikluft/piflash/issues
+
+Submit your own suggested modifications as GitHub pull requests https://github.com/ikluft/piflash/pulls ; see the GitHub help on pull requests at https://help.github.com/en/articles/about-pull-requests if needed. 
 
 When reporting a bug, please include the full output using the --verbose option. That will include all of the
 program's state information, which will help understand the bigger picture what was happening on your system.

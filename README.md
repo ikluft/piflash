@@ -12,6 +12,16 @@
 
 # Description
 
+<span class="right-float">
+<a href="https://opensource.com/article/19/3/piflash">
+<img src="doc/raspberrypi_board_vector_red.png" height=292 width="520">
+<br>
+<b>Getting started with PiFlash: Booting your Raspberry Pi on Linux</a>
+</a>
+<br>
+by Ian Kluft at OpenSource.com, March 15, 2019
+</span>
+
 This script writes (or "flashes") an SD card for a Raspberry Pi. It includes safety checks so that it can only erase and write to an SD card, not another device on the system. The safety checks are probably of most use to beginners. For more advanced users (like the author) it also has the convenience of flashing directly from the file formats downloadable from raspberrypi.org without extracting a .img file from a zip/gz/xz file.
 
 ## User documentation

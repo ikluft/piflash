@@ -7,7 +7,7 @@ This is a list of online resources for PiFlash
 ## Where to download Raspberry Pi bootable images
 
 The first place to look for Raspberry Pi bootable images is usually the Raspberry Pi Foundation's download page.
-L<https://www.raspberrypi.org/downloads/> .  But they stopped adding new sources long ago. There are more. These OS downloads include SD card images for the Raspberry Pi.
+https://www.raspberrypi.org/downloads/ .  But they stopped adding new sources long ago. There are more. These OS downloads include SD card images for the Raspberry Pi.
 
 Please suggest (or directly submit edits via pull requests on GitHub) other places to download bootable Raspberry Pi images (SD card files).
 

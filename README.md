@@ -12,11 +12,11 @@
 
 # Description
 
-<span class="right-float">
+<span align="right">
 <a href="https://opensource.com/article/19/3/piflash">
 <img src="doc/raspberrypi_board_vector_red.png" height=292 width="520">
 <br>
-<b>Getting started with PiFlash: Booting your Raspberry Pi on Linux</a>
+<b>Getting started with PiFlash: Booting your Raspberry Pi on Linux</b>
 </a>
 <br>
 by Ian Kluft at OpenSource.com, March 15, 2019

@@ -13,11 +13,13 @@
 # Featured article
 
 <a href="https://opensource.com/article/19/3/piflash">
-<img src="doc/raspberrypi_board_vector_red.png" height=219 width="390">
+<img src="doc/raspberrypi_board_vector_red.png" height=176 width="312" align="left">
 <b>"Getting started with PiFlash: Booting your Raspberry Pi on Linux"</b>
 </a>
 <br>
-by Ian Kluft at OpenSource.com, March 15, 2019
+by Ian Kluft at OpenSource.com
+<br>
+March 15, 2019
 <br clear=all>
 
 # Description

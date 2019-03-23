@@ -36,7 +36,7 @@ to process the command line.
 
 L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>, L<PiFlash::State>
 
-L<https://metacpan.org/pod/distribution/PiFlash/doc/resources> - Online resources for PiFlash
+L<https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod> - Online resources for PiFlash
 
 L<https://metacpan.org/release/PiFlash> - main PiFlash release page on MetaCPAN
 

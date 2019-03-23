@@ -1,3 +1,6 @@
+# PODNAME: resources
+# ABSTRACT: Online resources for PiFlash
+
 =pod
 
 =head1 Online resources for PiFlash

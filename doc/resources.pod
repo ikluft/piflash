@@ -25,31 +25,31 @@ This is also the list to watch that PiFlash should be able to recognize the file
 
 =item L<Alpine Linux|https://alpinelinux.org/downloads/>
 
-  Alpine is a compact security-oriented Linux distribution, popular for containter and IoT
-  (uses its own packaging system)
+Alpine is a compact security-oriented Linux distribution, popular for containter and IoT
+(uses its own packaging system)
 
 =item L<Arch Linux|https://archlinuxarm.org/about/downloads>
 
-  Arch is a compact Linux distribution based on a rolling-release model
-  (uses its own packaging system)
+Arch is a compact Linux distribution based on a rolling-release model
+(uses its own packaging system)
 
 =item L<Fedora Linux|https://arm.fedoraproject.org/>
 
-  Fedora is the Open Source Linux distribution which acts as the foundation that RedHat Enterprise Linux is built on
-  (based on RPM RedHat Package Manager)
+Fedora is the Open Source Linux distribution which acts as the foundation that RedHat Enterprise Linux is built on
+(based on RPM RedHat Package Manager)
 
 =item L<FreeBSD|https://www.freebsd.org/where.html>
 
-  FreeBSD is the largest Open Source derivative of Berkeley BSD Unix
+FreeBSD is the largest Open Source derivative of Berkeley BSD Unix
 
 =item L<FreedomBox|https://freedombox.org/download/stable/>
 
-  personal server project of Debian Linux
+personal server project of Debian Linux
 
 =item L<Slackware ARM on a Raspberry Pi (SARPi)|http://rpi.fatdog.eu/>
 
-  Slackware Linux, one of the original Linux distributions
-  (uses its own packaging system)
+Slackware Linux, one of the original Linux distributions
+(uses its own packaging system)
 
 =back
 

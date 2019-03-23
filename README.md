@@ -30,8 +30,8 @@ This script writes (or "flashes") an SD card for a Raspberry Pi. It includes saf
 
 * [PiFlash program usage and installation](https://metacpan.org/pod/distribution/PiFlash/bin/piflash)
 * [Online resources for PiFlash](https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod)
-  * [Where to download Raspberry Pi bootable images](https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod#where-to-download-raspberry-pi-bootable-images)
-  * [Presentations and Articles](https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod#presentations-and-articles)
+  * [Where to download Raspberry Pi bootable images](https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod#Where-to-download-Raspberry-Pi-bootable-images)
+  * [Presentations and Articles](https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod#Presentations-and-Articles)
 * [PiFlash release on CPAN](https://metacpan.org/release/PiFlash)
 * [PiFlash source code on GitHub](https://github.com/ikluft/piflash)
 

@@ -425,6 +425,8 @@ sub get_fstype
 			}
 			if ($magic_data->{description} =~ /^Linux rev \d+.\d+ (ext[234]) filesystem data,/) {
 				$fstype=$1;
+            } elsif ($magic_data->{description} =~ /^BTRFS Filesystem/) {
+                $fstype="btrfs";
 			} elsif ($magic_data->{description} =~ /^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),/) {
 				$fstype="vfat";
 			} elsif ($magic_data->{description} =~ /^Linux\/\w+ swap file/) {

@@ -6,8 +6,12 @@ Change log for PiFlash
  [BUG FIXES]
 
  [DOCS]
+ - resources.pod: formatting tweak - remove leading spaces on paragraphs for Markdown-POD conversion
+ - resources.pod: add podname/abstract for Dist::Zilla release metadata
+ - add missing .pod in updated Resources page URL
 
  [ENHANCEMENTS]
+ - PiFlash::Inspector now recognizes btrfs filesystem
 
  [MAJOR]
 

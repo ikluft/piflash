@@ -15,6 +15,7 @@ use autodie; # report errors instead of silently continuing ("die" actions are u
 use Try::Tiny;
 use File::Basename;
 use File::Slurp qw(slurp);
+use File::Temp;
 
 # ABSTRACT: write to Raspberry Pi SD card installation with scriptable customization
 
@@ -242,20 +243,43 @@ sub flash_device
 		if (PiFlash::State::has_cli_opt("resize") and not PiFlash::State::has_input("NOOBS")) {
 			say "- resizing the partition";
 
-			if ((defined $fstype_root) and $fstype_root =~ /^ext[234]/ ) {
-				# ext2/3/4 filesystem can be resized
-				my @sfdisk_resize_input = ( ", +" );
-				PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
-					PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet", "--no-reread", "-N",
-					$num_root, PiFlash::State::output("path"));
-				say "- checking the filesystem";
-				PiFlash::Command::cmd2str("filesystem check", PiFlash::Command::prog("sudo"),
-					PiFlash::Command::prog("e2fsck"), "-fy", "/dev/$part_root");
-				say "- resizing the filesystem";
-				PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
-					PiFlash::Command::prog("resize2fs"), "/dev/$part_root");
+			if (defined $fstype_root) {
+                my @sfdisk_resize_input = ( ", +" );
+                if ( $fstype_root =~ /^ext[234]/ ) {
+                    # ext2/3/4 filesystem can be resized
+                    PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
+                        PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet",
+                        "--no-reread", "-N", $num_root, PiFlash::State::output("path"));
+                    say "- checking the filesystem";
+                    PiFlash::Command::cmd2str("filesystem check ($fstype_root)", PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("e2fsck"), "-fy", "/dev/$part_root");
+                    say "- resizing the filesystem";
+                    PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("resize2fs"), "/dev/$part_root");
+                    reread_pt("resize $fstype_root"); # re-read partition table, use multiple tries if necessary
+                } elsif ( $fstype_root eq "btrfs" ) {
+                    # btrfs filesystem can be resized
+                    PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
+                        PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet",
+                        "--no-reread", "-N", $num_root, PiFlash::State::output("path"));
+                    say "- checking the filesystem";
+                    PiFlash::Command::cmd2str("filesystem check (btrfs)", PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("btrfs"), qw(check --progress), "/dev/$part_root");
+                    say "- resizing the filesystem";
+                    my $mntdir = PiFlash::State::system("media_dir")."/piflash/sdcard";
+                    my $mnt_root = $mntdir."/root";
+                    PiFlash::Command::cmd("create mount point for root fs", PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("mkdir"), "-p", $mnt_root );
+                    PiFlash::Command::cmd2str("resize filesystem", PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("btrfs"), qw(resize max), $mnt_root );
+                    PiFlash::Command::cmd("unmount root fs", PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("umount"), $mnt_root);
+                    reread_pt("resize $fstype_root"); # re-read partition table, use multiple tries if necessary
+                } else {
+                    warn "unrecognized filesystem type $fstype_root - resize not attempted";
+                }
 			} else {
-				warn "unrecognized filesystem type ".($fstype_root // "")." - resize not attempted";
+				warn "unknown filesystem type - resize not attempted";
 			}
 		}
 

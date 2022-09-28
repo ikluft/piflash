@@ -1,3 +1,11 @@
 /PiFlash-*
 /.build
 !META.json
+
+*.pm.tdy
+*.swp
+
+# Dizt::Zilla
+/.build/
+PiFlash-[0-9]*.tar.gz
+PiFlash-[0-9]*/

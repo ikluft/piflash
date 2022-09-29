@@ -4,9 +4,14 @@
 # the information stored here includes configuration,command-line arguments, system hardware inspection results, etc
 #
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 # State class to hold program state, and print it all out in case of errors
 # this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
@@ -73,6 +78,12 @@ PiFlash uses the device info to refuse to write/destroy a device which is not an
 
 L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>
 
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
+
 =cut
 
 
@@ -131,7 +142,7 @@ sub state
 {
 	my ($package, $filename, $line) = caller;
 	($package eq "PiFlash::State" or $package->isa("PiFlash::State"))
-		or die "internal-use-only function called by $package at $filename line $line";
+		or croak "internal-use-only function called by $package at $filename line $line";
 	return $PiFlash::State::state;
 }
 
@@ -200,7 +211,7 @@ sub odump
 		return ("    " x $level).($$obj // "undef")."\n";
 	}
 	if (ref $obj eq "HASH" or ref $obj eq "PiFlash::State"
-		or (ref $obj =~ /^PiFlash::/ and $obj->isa("PiFlash::Object")))
+		or (ref $obj =~ /^PiFlash::/x and $obj->isa("PiFlash::Object")))
 	{
 		# process hash reference
 		my $str = "";
@@ -291,6 +302,7 @@ sub read_config
 			}
 		}
 	}
+    return;
 }
 
 1;

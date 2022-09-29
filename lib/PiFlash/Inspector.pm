@@ -1,19 +1,25 @@
 # PiFlash::Inspector - inspection of the Linux system configuration including identifying SD card devices
 # by Ian Kluft
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
-use PiFlash::State;
-use PiFlash::Command;
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Inspector;
 
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Try::Tiny;
+use Readonly;
 use File::Basename;
 use File::Slurp qw(slurp);
 use File::LibMagic; # rpm: "dnf install perl-File-LibMagic", deb: "apt-get install libfile-libmagic-perl"
+use PiFlash::State;
+use PiFlash::Command;
 
 # ABSTRACT: PiFlash functions to inspect Linux system devices to flash an SD card for Raspberry Pi
 
@@ -35,6 +41,12 @@ This class contains internal functions used by L<PiFlash> in the process of coll
 
 L<piflash>, L<PiFlash::Command>, L<PiFlash::State>
 
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
+
 =cut
 
 #
@@ -42,10 +54,10 @@ L<piflash>, L<PiFlash::Command>, L<PiFlash::State>
 #
 
 # recognized file suffixes which SD cards can be flashed from
-our @known_suffixes = qw(gz zip xz img);
+Readonly::Array my @known_suffixes => qw(gz zip xz img);
 
 # block device parameters to collect via lsblk
-our @blkdev_params = ( "MOUNTPOINT", "FSTYPE", "SIZE", "SUBSYSTEMS", "TYPE", "MODEL", "RO", "RM", "HOTPLUG", "PHY-SEC");
+Readonly::Array my @blkdev_params => qw(MOUNTPOINT FSTYPE SIZE SUBSYSTEMS TYPE MODEL RO RM HOTPLUG PHY-SEC);
 
 # collect data about the system: kernel specs, program locations
 sub collect_system_info
@@ -81,12 +93,12 @@ sub collect_system_info
 
 	# find filesystems supported by this kernel (for formatting SD card)
 	my %fs_pref = (vfat => 1, ext4 => 2, ext3 => 3, ext2 => 4, exfat => 5, other => 6); # fs preference order
-	my @filesystems = grep {! /^nodev\s/} slurp("/proc/filesystems");
+	my @filesystems = grep {not /^nodev\s/x} slurp("/proc/filesystems");
 	chomp @filesystems;
 	for (my $i=0; $i<=$#filesystems; $i++) {
 		# remove leading and trailing whitespace;
-		$filesystems[$i] =~ s/^\s*//;
-		$filesystems[$i] =~ s/\s*$//;
+		$filesystems[$i] =~ s/^\s*//x;
+		$filesystems[$i] =~ s/\s*$//x;
 	}
 	# sort list by decreasing preference (increasing numbers)
 	$system->{filesystems} = [ sort {($fs_pref{$a} // $fs_pref{other})
@@ -101,6 +113,7 @@ sub collect_system_info
 			last;
 		}
 	}
+    return;
 }
 
 # collect input file info
@@ -110,10 +123,10 @@ sub collect_file_info
 	my $input = PiFlash::State::input();
 
 	# verify input file exists
-	if (! -e $input->{path}) {
+	if (not -e $input->{path}) {
 		PiFlash::State->error("input ".$input->{path}." does not exist");
 	}
-	if (! -f $input->{path}) {
+	if (not -f $input->{path}) {
 		PiFlash::State->error("input ".$input->{path}." is not a regular file");
 	}
 
@@ -137,16 +150,16 @@ sub collect_file_info
 
 	# use libmagic/file to determine file type from contents
 	say "input file is a ".$input->{info}{description};
-	if ($input->{info}{description} =~ /^Zip archive data/i) {
+	if ($input->{info}{description} =~ /^Zip archive data/ix) {
 		$input->{type} = "zip";
-	} elsif ($input->{info}{description} =~ /^gzip compressed data/i) {
+	} elsif ($input->{info}{description} =~ /^gzip compressed data/ix) {
 		$input->{type} = "gz";
-	} elsif ($input->{info}{description} =~ /^XZ compressed data/i) {
+	} elsif ($input->{info}{description} =~ /^XZ compressed data/ix) {
 		$input->{type} = "xz";
-	} elsif ($input->{info}{description} =~ /^DOS\/MBR boot sector/i) {
+	} elsif ($input->{info}{description} =~ /^DOS\/MBR boot sector/ix) {
 		$input->{type} = "img";
 	}
-	if (!exists $input->{type}) {
+	if (not exists $input->{type}) {
 		PiFlash::State->error("collect_file_info(): file type not recognized on $input->{path}");
 	}
 
@@ -162,30 +175,34 @@ sub collect_file_info
 		my $found_build_data = 0;
 		my @imgfiles;
 		my $zip_lastline = pop @zip_content; # last line contains total size
-		$zip_lastline =~ /^\s*(\d+)/;
-		$input->{size} = $1;
+        {
+            my $size = $zip_lastline; # get last line of unzip output with total size
+            $size =~ s/^ \s*//x; # remove leading whitespace
+            $size =~ s/[^\d]*$//x; # remove anything else after numeric digits
+            $input->{size} = $size;
+        }
 		foreach my $zc_entry (@zip_content) {
-			if ($zc_entry =~ /\sBUILD-DATA$/) {
+			if ($zc_entry =~ /\sBUILD-DATA$/x) {
 				$found_build_data = 1;
-			} elsif ($zc_entry =~ /^\s*(\d+)\s.*\s([^\s]*)$/) {
+			} elsif ($zc_entry =~ /^\s*(\d+)\s.*\s([^\s]*)$/x) {
 				push @imgfiles, [$2, $1];
 			}
 		}
 
 		# detect if the zip archive contains Raspberry Pi NOOBS (New Out Of the Box System)
 		if ($found_build_data) {
-			my @noobs_version = grep {/^NOOBS Version:/} PiFlash::Command::cmd2str("unzip - check for NOOBS",
+			my @noobs_version = grep {/^NOOBS Version:/x} PiFlash::Command::cmd2str("unzip - check for NOOBS",
 				PiFlash::Command::prog("unzip"), "-p", $input->{path}, "BUILD-DATA");
 			chomp @noobs_version;
 			if (scalar @noobs_version > 0) {
-				if ($noobs_version[0] =~ /^NOOBS Version: (.*)/) {
+				if ($noobs_version[0] =~ /^NOOBS Version: (.*)/x) {
 					$input->{NOOBS} = $1;
 				}
 			}
 		}
 
 		# if NOOBS system was not found, look for a *.img file
-		if (!exists $input->{NOOBS}) {
+		if (not exists $input->{NOOBS}) {
 			if (scalar @imgfiles == 0) {
 				PiFlash::State->error("input file is a zip archive but does not contain a *.img file or NOOBS system");
 			}
@@ -197,24 +214,25 @@ sub collect_file_info
 		my @gunzip_out = PiFlash::Command::cmd2str("gunzip - list contents", PiFlash::Command::prog("gunzip"),
 			"--list", "--quiet", $input->{path});
 		chomp @gunzip_out;
-		$gunzip_out[0] =~ /^\s+\d+\s+(\d+)\s+[\d.]+%\s+(.*)/;
-		$input->{size} = $1;
-		$input->{imgfile} = $2;
+        my @fields = split ' ', @gunzip_out;
+        $input->{size} = $fields[1];
+        $input->{imgfile} = $fields[3];
 	} elsif ($input->{type} eq "xz") {
 		# process xz compressed files
-		if ($input->{path} =~ /^.*\/([^\/]*\.img)\.xz/) {
+		if ($input->{path} =~ /^.*\/([^\/]*\.img)\.xz/x) {
 			$input->{imgfile} = $1;
 		}
 		my @xz_out = PiFlash::Command::cmd2str("xz - list contents", PiFlash::Command::prog("xz"), "--robot",
 			"--list", $input->{path});
 		chomp @xz_out;
 		foreach my $xz_line (@xz_out) {
-			if ($xz_line =~ /^file\s+\d+\s+\d+\s+\d+\s+(\d+)/) {
+			if ($xz_line =~ /^file\s+\d+\s+\d+\s+\d+\s+(\d+)/x) {
 				$input->{size} = $1;
 				last;
 			}
 		}
 	}
+    return;
 }
 
 # collect output device info
@@ -223,10 +241,10 @@ sub collect_device_info
 	my $output = PiFlash::State::output();
 
 	# check that device exists
-	if (! -e $output->{path}) {
+	if (not -e $output->{path}) {
 		PiFlash::State->error("output device ".$output->{path}." does not exist");
 	}
-	if (! -b $output->{path}) {
+	if (not -b $output->{path}) {
 		PiFlash::State->error("output device ".$output->{path}." is not a block device");
 	}
 
@@ -237,7 +255,7 @@ sub collect_device_info
 	if ($output->{mountpoint} ne "") {
 		PiFlash::State->error("output device is mounted - this operation would erase it");
 	}
-	if (!(exists $output->{fstype}) or $output->{fstype} =~ /^\s*$/) {
+	if ((not exists $output->{fstype}) or $output->{fstype} =~ /^\s*$/x) {
 		# workaround for apparent bug in lsblk in util-linux which omits requested FSTYPE data
 		$output->{fstype} = get_fstype($output->{path}) // "";
 	}
@@ -249,7 +267,7 @@ sub collect_device_info
 	}
 
 	# check for SD/MMC card via USB or PCI bus interfaces
-	if (!is_sd()) {
+	if (not is_sd()) {
 		PiFlash::State->error("output device is not an SD card - this operation would erase it");
 	}
 }
@@ -260,23 +278,25 @@ sub collect_device_info
 #   param-name: list of parameter names to read into output hash
 sub blkparam
 {
+    my @args = @_;
+
 	# use PiFlash::State::output device unless another hash is provided
 	my $blkdev;
-	if (ref($_[0]) eq "HASH") {
-		$blkdev = shift @_;
+	if (ref($args[0]) eq "HASH") {
+		$blkdev = shift @args;
 	} else {
 		$blkdev = PiFlash::State::output();
 	}
 
 	# get the device's path
 	# throw an exception if the device's hash data doesn't have it
-	if (!exists $blkdev->{path}) {
+	if (not exists $blkdev->{path}) {
 		PiFlash::State::error("blkparam: device hash does not contain path to device");
 	}
 	my $path = $blkdev->{path};
 
 	# loop through the requested parameters and get each one for the device with lsblk
-	foreach my $paramname (@_) {
+	foreach my $paramname (@args) {
 		if (exists $blkdev->{lc $paramname}) {
 			# skip names of existing data to avoid overwriting
 			say STDERR "blkparam(): skipped collection of parameter $paramname to avoid overwriting existing data";
@@ -293,19 +313,22 @@ sub blkparam
 			PiFlash::State->error(sprintf "blkparam($paramname): lsblk exited with value %d", $? >> 8);
 		}
 		chomp $value;
-		$value =~ s/^\s*//; # remove leading whitespace
-		$value =~ s/\s*$//; # remove trailing whitespace
+		$value =~ s/^\s*//x; # remove leading whitespace
+		$value =~ s/\s*$//x; # remove trailing whitespace
 		$blkdev->{lc $paramname} = $value;
 	}
+    return;
 }
 
 # check if a device is an SD card
 sub is_sd
 {
+    my @args = @_;
+
 	# use PiFlash::State::output device unless another hash is provided
 	my $blkdev;
-	if (ref($_[0]) eq "HASH") {
-		$blkdev = shift @_;
+	if (ref($args[0]) eq "HASH") {
+		$blkdev = shift @args;
 	} else {
 		$blkdev = PiFlash::State::output();
 	}
@@ -320,7 +343,7 @@ sub is_sd
 	# check if the SD card driver operates this device
 	my $found_mmc = 0;
 	my $found_usb = 0;
-	my @subsystems = split /:/, $blkdev->{subsystems};
+	my @subsystems = split /:/x, $blkdev->{subsystems};
 	foreach my $subsystem (@subsystems) {
 		if ($subsystem eq "mmc_host" or $subsystem eq "mmc") {
 			$found_mmc = 1;
@@ -332,7 +355,7 @@ sub is_sd
 	if ($found_mmc) {
 		# verify that the MMC device is actually an SD card
 		my $sysfs_devtype_path = "/sys/block/".basename($blkdev->{path})."/device/type";
-		if (! -f $sysfs_devtype_path) {
+		if (not -f $sysfs_devtype_path) {
 			PiFlash::State->error("cannot find output device ".$blkdev->{path}." type - Linux kernel "
 				.PiFlash::State::system("release")." may be too old");
 		}
@@ -385,6 +408,7 @@ sub sd_search
 	} else {
 		say "SD cards found: ".join(" ", @sdcard);
 	}
+    return;
 }
 
 # base function: get basename from a file path
@@ -408,12 +432,12 @@ sub get_fstype
 	};
 
 	# fallback: use blkid
-	if ((!defined $fstype) or $fstype =~ /^\s*$/) {
+	if ((not defined $fstype) or $fstype =~ /^\s*$/x) {
 		$fstype = PiFlash::Command::cmd2str( "use blkid to get fs type for $devpath", PiFlash::Command::prog("sudo"),
 			PiFlash::Command::prog("blkid"), "--probe", "--output=value", "--match-tag=TYPE", $devpath);
 
 		# fallback: use File::LibMagic as backup filesystem type lookup 
-		if ((!defined $fstype) or $fstype =~ /^\s*$/) {
+		if ((not defined $fstype) or $fstype =~ /^\s*$/x) {
 			my $magic = File::LibMagic->new();
 			$fstype = undef;
 			$magic->{flags} |= File::LibMagic::MAGIC_DEVICES; # undocumented trick for equivalent of "file -s" on device
@@ -423,15 +447,15 @@ sub get_fstype
 					say "get_fstype: magic_data/$key = ".$magic_data->{$key};
 				}
 			}
-			if ($magic_data->{description} =~ /^Linux rev \d+.\d+ (ext[234]) filesystem data,/) {
+			if ($magic_data->{description} =~ /^Linux rev \d+.\d+ (ext[234]) filesystem data,/x) {
 				$fstype=$1;
-            } elsif ($magic_data->{description} =~ /^BTRFS Filesystem/) {
+            } elsif ($magic_data->{description} =~ /^BTRFS Filesystem/x) {
                 $fstype="btrfs";
-			} elsif ($magic_data->{description} =~ /^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),/) {
+			} elsif ($magic_data->{description} =~ /^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),/x) {
 				$fstype="vfat";
-			} elsif ($magic_data->{description} =~ /^Linux\/\w+ swap file/) {
+			} elsif ($magic_data->{description} =~ /^Linux\/\w+ swap file/x) {
 				$fstype="swap";
-			} elsif ($magic_data->{description} =~ /\s+(\w+)\sfilesystem/i) {
+			} elsif ($magic_data->{description} =~ /\s+(\w+)\sfilesystem/ix) {
 				$fstype=lc $1;
 			}
 		}

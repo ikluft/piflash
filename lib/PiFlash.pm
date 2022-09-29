@@ -1,14 +1,15 @@
 # PiFlash - flash a Raspberry Pi image to an SD card, with safety checks to avoid erasing wrong device
 # This module/script uses sudo to perform root-privileged functions.
 # by Ian Kluft
+
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
-use PiFlash::State;
-use PiFlash::Plugin;
-use PiFlash::Command;
-use PiFlash::Inspector;
-use PiFlash::MediaWriter;
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash;
 
@@ -16,6 +17,11 @@ use autodie; # report errors instead of silently continuing ("die" actions are u
 use Getopt::Long qw(GetOptionsFromArray); # included with perl
 use File::Basename; # included with perl
 use File::Path qw(make_path); # RPM: perl-File-Path, DEB: included with perl
+use PiFlash::State;
+use PiFlash::Plugin;
+use PiFlash::Command;
+use PiFlash::Inspector;
+use PiFlash::MediaWriter;
 
 # ABSTRACT: Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 
@@ -41,6 +47,12 @@ L<https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod> - Online reso
 L<https://metacpan.org/release/PiFlash> - main PiFlash release page on MetaCPAN
 
 L<https://github.com/ikluft/piflash> - PiFlash repository on GitHub
+
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
 
 =cut
 
@@ -78,11 +90,12 @@ sub cli_def
 # print program usage message
 sub usage
 {
+    my @args = @_;
 	my @msg;
-	if (@_) {
+	if (@args) {
 		push @msg, shift;
-		foreach (@_) {
-			push @msg, "   $_";
+		foreach my $arg (@args) {
+			push @msg, "   $arg";
 		}
 	}
 	push @msg, "usage: ".basename($0)." [--verbose | --logging] [--resize] [--config conf-file] input-file output-device";
@@ -169,6 +182,7 @@ sub process_cli
 	if (@errors) {
 		usage(@errors);
 	}
+    return;
 }
 
 # PiFlash main routine
@@ -257,12 +271,13 @@ sub piflash
 
 	# flash the device
 	PiFlash::MediaWriter::flash_device();
+    return;
 }
 
 # run main routine and catch exceptions
 sub main
 {
-	local $@; # avoid interference from anything that modifies global $@
+	local $@ = undef; # avoid interference from anything that modifies global $@
 	do { piflash(); };
 
 	# catch any exceptions thrown in main routine

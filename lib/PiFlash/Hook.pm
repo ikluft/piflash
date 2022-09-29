@@ -1,9 +1,14 @@
 # PiFlash::Hook - named dispatch/hook library for PiFlash
 # by Ian Kluft
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Hook;
 
@@ -27,6 +32,12 @@ use PiFlash::State;
 
 L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::MediaWriter>, L<PiFlash::State>
 
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
+
 =cut
 
 # initialize hooks hash as empty
@@ -44,10 +55,10 @@ sub object_params
 # use AUTOLOAD to call a named hook as if it were a class method
 our $AUTOLOAD;
 sub AUTOLOAD {
-	my $self = shift;
+	my ( $self, @args ) = @_;
 
 	# Remove qualifier from original method name...
-	my $called =  $AUTOLOAD =~ s/.*:://r;
+	my $called =  $AUTOLOAD =~ s/.*:://rx;
 
 	# differentiate between class and instance methods
 	if (defined $self and ref $self eq "PiFlash::Hook") {
@@ -56,12 +67,11 @@ sub AUTOLOAD {
 		if (exists $self->{$called}) {
 			return $self->{$called};
 		}
-		return;
 	} else {
 		# autoloaded class methods run hooks by name
-		run($called, @_);
+		run($called, @args);
 	}
-
+    return;
 }
 
 # add a code reference to a named hook
@@ -76,6 +86,7 @@ sub add
 		$hooks{$name} = [];
 	}
 	push @{$hooks{$name}}, PiFlash::Hook::new({name => $name, code => $coderef, origin => [caller]});
+    return;
 }
 
 # check if there are any hooks registered for a name
@@ -88,7 +99,7 @@ sub has
 # run the hook code
 sub run
 {
-	my $name = shift;
+	my ( $name, @args ) = @_;
 
 	# Is there a hook of that name?
 	if (!exists $hooks{$name}) {
@@ -102,7 +113,7 @@ sub run
 	my @result;
 	if (ref $hooks{$name} eq "ARRAY") {
 		foreach my $hook (@{$hooks{$name}}) {
-			push @result, $hook->{code}(@_);
+			push @result, $hook->{code}(@args);
 		}
 	}
 	return @result;

@@ -7,15 +7,15 @@
 use strict;
 use warnings;
 use utf8;
-use 5.01400; # require 2011 or newer version of Perl
+use 5.01400;    # require 2011 or newer version of Perl
 ## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Command;
 
 use autodie;
-use POSIX; # included with perl
-use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
-use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
+use POSIX;                          # included with perl
+use IO::Handle;                     # rpm: "dnf install perl-IO", deb: included with perl
+use IO::Poll qw(POLLIN POLLHUP);    # same as IO::Handle
 use Carp qw(carp croak);
 use PiFlash::State;
 
@@ -44,28 +44,27 @@ Patches and enhancements may be submitted via a pull request at L<https://github
 
 =cut
 
-
 # fork wrapper function
 # borrowed from Aaron Crane's YAPC::EU 2009 presentation slides online
 sub fork_child
 {
     my ($child_process_code) = @_;
 
-	# fork and catch errors
+    # fork and catch errors
     my $pid = fork;
-	if (!defined $pid) {
-		PiFlash::State->error("Failed to fork: $!\n");
-	}
+    if ( !defined $pid ) {
+        PiFlash::State->error("Failed to fork: $!\n");
+    }
 
-	# if in parent process, return child pid
-	if ($pid != 0) {
-		return $pid;
-	}
+    # if in parent process, return child pid
+    if ( $pid != 0 ) {
+        return $pid;
+    }
 
     # if in child process, run requested code
     my $result = $child_process_code->();
 
-	# if we got here, child code returned - so exit to end the subprocess
+    # if we got here, child code returned - so exit to end the subprocess
     exit $result;
 }
 
@@ -74,15 +73,15 @@ sub cmd_log
 {
     my @args = @_;
 
-	# record all command return codes, stdout & stderr in a new top-level store in State
-	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
-	if (PiFlash::State::verbose() or PiFlash::State::logging()) {
-		my $log = PiFlash::State::log();
-		if (!exists $log->{cmd}) {
-			$log->{cmd} = [];
-		}
-		push @{$log->{cmd}}, { @args };
-	}
+    # record all command return codes, stdout & stderr in a new top-level store in State
+    # it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
+    if ( PiFlash::State::verbose() or PiFlash::State::logging() ) {
+        my $log = PiFlash::State::log();
+        if ( !exists $log->{cmd} ) {
+            $log->{cmd} = [];
+        }
+        push @{ $log->{cmd} }, {@args};
+    }
     return;
 }
 
@@ -93,142 +92,158 @@ sub fork_exec
 {
     my @args = @_;
 
-	# input for child process may be provided as reference to array - use it and remove it from parameters
-	my @input;
-	if ( ref $args[0] eq "ARRAY" ) {
-		my $input_ref = shift @args;
-		@input = @$input_ref;
-	}
-	if (PiFlash::State::verbose()) {
-		say STDERR "fork_exec running: ".join(" ", @args);
-	}
-	my $cmdname = shift @args;
+    # input for child process may be provided as reference to array - use it and remove it from parameters
+    my @input;
+    if ( ref $args[0] eq "ARRAY" ) {
+        my $input_ref = shift @args;
+        @input = @$input_ref;
+    }
+    if ( PiFlash::State::verbose() ) {
+        say STDERR "fork_exec running: " . join( " ", @args );
+    }
+    my $cmdname = shift @args;
 
-	# open pipes for child process stdin, stdout, stderr
-	my ($child_in_reader, $child_in_writer, $child_out_reader, $child_out_writer,
-		$child_err_reader, $child_err_writer);
-	pipe $child_in_reader, $child_in_writer
-		or PiFlash::State->error("fork_exec($cmdname): failed to open child process input pipe: $!");
-	pipe $child_out_reader, $child_out_writer
-		or PiFlash::State->error("fork_exec($cmdname): failed to open child process output pipe: $!");
-	pipe $child_err_reader, $child_err_writer
-		or PiFlash::State->error("fork_exec($cmdname): failed to open child process error pipe: $!");
+    # open pipes for child process stdin, stdout, stderr
+    my (
+        $child_in_reader,  $child_in_writer,  $child_out_reader,
+        $child_out_writer, $child_err_reader, $child_err_writer
+    );
+    pipe $child_in_reader, $child_in_writer
+        or PiFlash::State->error("fork_exec($cmdname): failed to open child process input pipe: $!");
+    pipe $child_out_reader, $child_out_writer
+        or PiFlash::State->error("fork_exec($cmdname): failed to open child process output pipe: $!");
+    pipe $child_err_reader, $child_err_writer
+        or PiFlash::State->error("fork_exec($cmdname): failed to open child process error pipe: $!");
 
-	# fork the child process
-	my $pid = fork_child(sub {
-		# in child process
+    # fork the child process
+    my $pid = fork_child(
+        sub {
+            # in child process
 
-		# close our copy of parent's end of pipes to avoid deadlock - it must now be only one with them open
-		close $child_in_writer
-			or croak "fork_exec($cmdname): child failed to close parent process input writer pipe: $!";
-		close $child_out_reader
-			or croak "fork_exec($cmdname): child failed to close parent process output reader pipe: $!";
-		close $child_err_reader
-			or croak "fork_exec($cmdname): child failed to close parent process error reader pipe: $!";
+            # close our copy of parent's end of pipes to avoid deadlock - it must now be only one with them open
+            close $child_in_writer
+                or croak "fork_exec($cmdname): child failed to close parent process input writer pipe: $!";
+            close $child_out_reader
+                or croak "fork_exec($cmdname): child failed to close parent process output reader pipe: $!";
+            close $child_err_reader
+                or croak "fork_exec($cmdname): child failed to close parent process error reader pipe: $!";
 
-		# dup file descriptors into child's standard in=0/out=1/err=2 positions
-		POSIX::dup2(fileno $child_in_reader, 0)
-			or croak "fork_exec($cmdname): child failed to reopen stdin from pipe: $!\n";
-		POSIX::dup2(fileno $child_out_writer, 1)
-			or croak "fork_exec($cmdname): child failed to reopen stdout to pipe: $!\n";
-		POSIX::dup2(fileno $child_err_writer, 2)
-			or croak "fork_exec($cmdname): child failed to reopen stderr to pipe: $!\n";
+            # dup file descriptors into child's standard in=0/out=1/err=2 positions
+            POSIX::dup2( fileno $child_in_reader, 0 )
+                or croak "fork_exec($cmdname): child failed to reopen stdin from pipe: $!\n";
+            POSIX::dup2( fileno $child_out_writer, 1 )
+                or croak "fork_exec($cmdname): child failed to reopen stdout to pipe: $!\n";
+            POSIX::dup2( fileno $child_err_writer, 2 )
+                or croak "fork_exec($cmdname): child failed to reopen stderr to pipe: $!\n";
 
-		# close the file descriptors that were just consumed by dup2
-		close $child_in_reader
-			or croak "fork_exec($cmdname): child failed to close child process input reader pipe: $!";
-		close $child_out_writer
-			or croak "fork_exec($cmdname): child failed to close child process output writer pipe: $!";
-		close $child_err_writer
-			or croak "fork_exec($cmdname): child failed to close child process error writer pipe: $!";
+            # close the file descriptors that were just consumed by dup2
+            close $child_in_reader
+                or croak "fork_exec($cmdname): child failed to close child process input reader pipe: $!";
+            close $child_out_writer
+                or croak "fork_exec($cmdname): child failed to close child process output writer pipe: $!";
+            close $child_err_writer
+                or croak "fork_exec($cmdname): child failed to close child process error writer pipe: $!";
 
-		# execute the command
-		exec @args
-			or croak "fork_exec($cmdname): failed to execute command - returned $?";
-	});
+            # execute the command
+            exec @args
+                or croak "fork_exec($cmdname): failed to execute command - returned $?";
+        }
+    );
 
-	# in parent process
+    # in parent process
 
-	# close our copy of child's end of pipes to avoid deadlock - it must now be only one with them open
-	close $child_in_reader
-		or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process input reader pipe: $!");
-	close $child_out_writer
-		or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process output writer pipe: $!");
-	close $child_err_writer
-		or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process error writer pipe: $!");
+    # close our copy of child's end of pipes to avoid deadlock - it must now be only one with them open
+    close $child_in_reader
+        or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process input reader pipe: $!");
+    close $child_out_writer
+        or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process output writer pipe: $!");
+    close $child_err_writer
+        or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process error writer pipe: $!");
 
-	# write to child's input if any content was provided
-	if (@input) {
-		# blocks until input is accepted - this interface reqiuires child commands using input take it before output
-		# because parent process is not multithreaded
-		if (! print $child_in_writer join("\n", @input)."\n") {
-			PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
-		}
-	}
-	close $child_in_writer;
+    # write to child's input if any content was provided
+    if (@input) {
 
-	# use IO::Poll to collect child output and error separately
-	my @fd = ($child_out_reader, $child_err_reader); # file descriptors for out(0) and err(1)
-	my @text = (undef, undef); # received text for out(0) and err(1)
-	my @done = (0, 0); # done flags for out(0) and err(1)
-	my $poll = IO::Poll->new();
-	$poll->mask($fd[0] => POLLIN);
-	$poll->mask($fd[1] => POLLIN);
-	while (not $done[0] or not $done[1]) {
-		# wait for input
-		if ($poll->poll() == -1) {
-			PiFlash::State->error("fork_exec($cmdname): poll failed: $!");
-		}
-		for (my $i=0; $i<=1; $i++) {
-			if (!$done[$i]) {
-				my $events = $poll->events($fd[$i]);
-				if ($events && (POLLIN || POLLHUP)) {
-					# read all available input for input or hangup events
-					# we do this for hangup because Linux kernel doesn't report input when a hangup occurs
-					my $buffer;
-					while (read($fd[$i], $buffer, 1024) != 0) {
-						if (!defined $text[$i]) {
-							$text[$i] = "";
-						}
-						$text[$i] .= $buffer;
-					}
-					if ($events && (POLLHUP)) {
-						# hangup event means this fd (out=0, err=1) was closed by the child
-						$done[$i] = 1;
-						$poll->remove($fd[$i]);
-						close $fd[$i];
-					}
-				}
-			}
-		}
-	}
+        # blocks until input is accepted - this interface reqiuires child commands using input take it before output
+        # because parent process is not multithreaded
+        if ( !print $child_in_writer join( "\n", @input ) . "\n" ) {
+            PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
+        }
+    }
+    close $child_in_writer;
 
-	# reap the child process status
-	waitpid( $pid, 0 );
+    # use IO::Poll to collect child output and error separately
+    my @fd   = ( $child_out_reader, $child_err_reader );    # file descriptors for out(0) and err(1)
+    my @text = ( undef, undef );                            # received text for out(0) and err(1)
+    my @done = ( 0,     0 );                                # done flags for out(0) and err(1)
+    my $poll = IO::Poll->new();
+    $poll->mask( $fd[0] => POLLIN );
+    $poll->mask( $fd[1] => POLLIN );
+    while ( not $done[0] or not $done[1] ) {
 
-	# record all command return codes, stdout & stderr in a new top-level store in State
-	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
-	cmd_log (
-		cmdname => $cmdname,
-		cmdline => [@args],
-		returncode => $? >> 8,
-		(($? & 127) ? (signal => sprintf "signal %d%s", ($? & 127), (($? & 128) ? " with coredump" : "")) : ()),
-		out => $text[0],
-		err => $text[1]
-	);
+        # wait for input
+        if ( $poll->poll() == -1 ) {
+            PiFlash::State->error("fork_exec($cmdname): poll failed: $!");
+        }
+        for ( my $i = 0 ; $i <= 1 ; $i++ ) {
+            if ( !$done[$i] ) {
+                my $events = $poll->events( $fd[$i] );
+                if ( $events && ( POLLIN || POLLHUP ) ) {
 
-	# catch errors
-	if ($? == -1) {
-		PiFlash::State->error("failed to execute $cmdname command: $!");
-	} elsif ($? & 127) {
-		PiFlash::State->error(sprintf "%s command died with signal %d, %s coredump",
-			$cmdname, ($? & 127),  ($? & 128) ? 'with' : 'without');
-	} elsif ($? != 0) {
-		PiFlash::State->error(sprintf "%s command exited with value %d", $cmdname, $? >> 8);
-	}
+                    # read all available input for input or hangup events
+                    # we do this for hangup because Linux kernel doesn't report input when a hangup occurs
+                    my $buffer;
+                    while ( read( $fd[$i], $buffer, 1024 ) != 0 ) {
+                        if ( !defined $text[$i] ) {
+                            $text[$i] = "";
+                        }
+                        $text[$i] .= $buffer;
+                    }
+                    if ( $events && (POLLHUP) ) {
 
-	# return output/error
-	return @text;
+                        # hangup event means this fd (out=0, err=1) was closed by the child
+                        $done[$i] = 1;
+                        $poll->remove( $fd[$i] );
+                        close $fd[$i];
+                    }
+                }
+            }
+        }
+    }
+
+    # reap the child process status
+    waitpid( $pid, 0 );
+
+    # record all command return codes, stdout & stderr in a new top-level store in State
+    # it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
+    cmd_log(
+        cmdname    => $cmdname,
+        cmdline    => [@args],
+        returncode => $? >> 8,
+        (
+              ( $? & 127 )
+            ? ( signal => sprintf "signal %d%s", ( $? & 127 ), ( ( $? & 128 ) ? " with coredump" : "" ) )
+            : ()
+        ),
+        out => $text[0],
+        err => $text[1]
+    );
+
+    # catch errors
+    if ( $? == -1 ) {
+        PiFlash::State->error("failed to execute $cmdname command: $!");
+    } elsif ( $? & 127 ) {
+        PiFlash::State->error(
+            sprintf "%s command died with signal %d, %s coredump",
+            $cmdname,
+            ( $? & 127 ),
+            ( $? & 128 ) ? 'with' : 'without'
+        );
+    } elsif ( $? != 0 ) {
+        PiFlash::State->error( sprintf "%s command exited with value %d", $cmdname, $? >> 8 );
+    }
+
+    # return output/error
+    return @text;
 }
 
 # run a command
@@ -240,25 +255,33 @@ sub fork_exec
 sub cmd
 {
     my ( $cmdname, @args ) = @_;
-	if (PiFlash::State::verbose()) {
-		say STDERR "cmd running: ".join(" ", @args);
-	}
-	system (@args);
-	cmd_log (
-		cmdname => $cmdname,
-		cmdline => [@args],
-		returncode => $? >> 8,
-		(($? & 127) ? (signal => sprintf "signal %d%s", ($? & 127), (($? & 128) ? " with coredump" : "")) : ()),
-	);
-	if ($? == -1) {
-		PiFlash::State->error("failed to execute $cmdname command: $!");
-	} elsif ($? & 127) {
-		PiFlash::State->error(sprintf "%s command died with signal %d, %s coredump",
-			$cmdname, ($? & 127),  ($? & 128) ? 'with' : 'without');
-	} elsif ($? != 0) {
-		PiFlash::State->error(sprintf "%s command exited with value %d", $cmdname, $? >> 8);
-	}
-	return 1;
+    if ( PiFlash::State::verbose() ) {
+        say STDERR "cmd running: " . join( " ", @args );
+    }
+    system(@args);
+    cmd_log(
+        cmdname    => $cmdname,
+        cmdline    => [@args],
+        returncode => $? >> 8,
+        (
+              ( $? & 127 )
+            ? ( signal => sprintf "signal %d%s", ( $? & 127 ), ( ( $? & 128 ) ? " with coredump" : "" ) )
+            : ()
+        ),
+    );
+    if ( $? == -1 ) {
+        PiFlash::State->error("failed to execute $cmdname command: $!");
+    } elsif ( $? & 127 ) {
+        PiFlash::State->error(
+            sprintf "%s command died with signal %d, %s coredump",
+            $cmdname,
+            ( $? & 127 ),
+            ( $? & 128 ) ? 'with' : 'without'
+        );
+    } elsif ( $? != 0 ) {
+        PiFlash::State->error( sprintf "%s command exited with value %d", $cmdname, $? >> 8 );
+    }
+    return 1;
 }
 
 # run a command and return the output as a string
@@ -267,65 +290,64 @@ sub cmd
 # So the fork_exec_wrapper() was added as a lower-level base for cmd() and cmd2str().
 sub cmd2str
 {
-	my ( $cmdname, @args ) = @_;
-	my ($out, $err) = fork_exec($cmdname, @args);
-	if (defined $err) {
-		carp("$cmdname had error output:\n".$err);
-	}
-	if (wantarray) {
-		return split /\n/x, $out;
-	}
-	return $out;
+    my ( $cmdname, @args ) = @_;
+    my ( $out,     $err )  = fork_exec( $cmdname, @args );
+    if ( defined $err ) {
+        carp( "$cmdname had error output:\n" . $err );
+    }
+    if (wantarray) {
+        return split /\n/x, $out;
+    }
+    return $out;
 }
 
 # generate name of environment variable for where to find a command
 # this is broken out as a separate function for tests to use it
 sub envprog
 {
-	my $progname = shift;
-	my $envprog = (uc $progname)."_PROG";
-	$envprog =~ s/[\W-]+/_/xg; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
-	return $envprog;
+    my $progname = shift;
+    my $envprog  = ( uc $progname ) . "_PROG";
+    $envprog =~ s/[\W-]+/_/xg;    # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
+    return $envprog;
 }
 
 # look up secure program path
 sub prog
 {
-	my $progname = shift;
+    my $progname = shift;
 
-	if (!PiFlash::State::has_system("prog")) {
-		PiFlash::State::system("prog", {});
-	}
-	my $prog = PiFlash::State::system("prog");
+    if ( !PiFlash::State::has_system("prog") ) {
+        PiFlash::State::system( "prog", {} );
+    }
+    my $prog = PiFlash::State::system("prog");
 
-	# call with undef to initialize cache (mainly needed for testing because normal use will auto-create it)
-	if (!defined $progname) {
-		return;
-	}
+    # call with undef to initialize cache (mainly needed for testing because normal use will auto-create it)
+    if ( !defined $progname ) {
+        return;
+    }
 
-	# return value from cache if found
-	if (exists $prog->{$progname}) {
-		return $prog->{$progname};
-	}
+    # return value from cache if found
+    if ( exists $prog->{$progname} ) {
+        return $prog->{$progname};
+    }
 
-	# if we didn't have the location of the program, look for it and cache the result
-	my $envprog = envprog($progname);
-	if (exists $ENV{$envprog} and -x $ENV{$envprog}) {
-		$prog->{$progname} = $ENV{$envprog};
-		return $prog->{$progname};
-	}
+    # if we didn't have the location of the program, look for it and cache the result
+    my $envprog = envprog($progname);
+    if ( exists $ENV{$envprog} and -x $ENV{$envprog} ) {
+        $prog->{$progname} = $ENV{$envprog};
+        return $prog->{$progname};
+    }
 
-	# search paths in order emphasizing recent Linux Filesystem that prefers /usr/bin, then Unix PATH order
-	for my $path ("/usr/bin", "/sbin", "/usr/sbin", "/bin") {
-		if (-x "$path/$progname") {
-			$prog->{$progname} = "$path/$progname";
-			return $prog->{$progname};
-		}
-	}
+    # search paths in order emphasizing recent Linux Filesystem that prefers /usr/bin, then Unix PATH order
+    for my $path ( "/usr/bin", "/sbin", "/usr/sbin", "/bin" ) {
+        if ( -x "$path/$progname" ) {
+            $prog->{$progname} = "$path/$progname";
+            return $prog->{$progname};
+        }
+    }
 
-	# if we get here, we didn't find a known secure location for the program
-	PiFlash::State->error("unknown secure location for $progname - install it or set "
-			."$envprog to point to it");
+    # if we get here, we didn't find a known secure location for the program
+    PiFlash::State->error( "unknown secure location for $progname - install it or set " . "$envprog to point to it" );
 }
 
 1;

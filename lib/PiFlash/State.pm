@@ -10,7 +10,7 @@
 use strict;
 use warnings;
 use utf8;
-use 5.01400; # require 2011 or newer version of Perl
+use 5.01400;    # require 2011 or newer version of Perl
 ## use critic (Modules::RequireExplicitPackage)
 
 # State class to hold program state, and print it all out in case of errors
@@ -18,7 +18,7 @@ use 5.01400; # require 2011 or newer version of Perl
 package PiFlash::State;
 
 use autodie;
-use YAML::XS; # RPM: perl-YAML-LibYAML, DEB: libyaml-libyaml-perl
+use YAML::XS;    # RPM: perl-YAML-LibYAML, DEB: libyaml-libyaml-perl
 use Carp qw(croak);
 
 # ABSTRACT: PiFlash::State class to store configuration, device info and program state
@@ -86,7 +86,6 @@ Patches and enhancements may be submitted via a pull request at L<https://github
 
 =cut
 
-
 # initialize state as empty
 ## no critic (ProhibitPackageVars)
 our $state;
@@ -96,100 +95,104 @@ our $state;
 # class method
 sub init
 {
-	## no critic (ProhibitPackageVars)
-	my $class = shift;
-	(defined $PiFlash::State::state) and return; # avoid damaging data if called again
+    ## no critic (ProhibitPackageVars)
+    my $class = shift;
+    ( defined $PiFlash::State::state ) and return;    # avoid damaging data if called again
 
-	# global security settings for YAML::XS parser
-	# since PiFlash can run parts as root, we don't want any external code to be run without user authorization
-	$YAML::XS::LoadBlessed = 0;
-	$YAML::XS::UseCode = 0;
-	$YAML::XS::LoadCode = 0;
+    # global security settings for YAML::XS parser
+    # since PiFlash can run parts as root, we don't want any external code to be run without user authorization
+    $YAML::XS::LoadBlessed = 0;
+    $YAML::XS::UseCode     = 0;
+    $YAML::XS::LoadCode    = 0;
 
-	# instantiate the state object as a singleton (only one instance in the system)
-	$PiFlash::State::state = {};
-	bless $PiFlash::State::state, $class;
-	my $self = $PiFlash::State::state;
+    # instantiate the state object as a singleton (only one instance in the system)
+    $PiFlash::State::state = {};
+    bless $PiFlash::State::state, $class;
+    my $self = $PiFlash::State::state;
 
-	# loop through parameters adding each name as a top-level state hash and accessor functions
-	while (scalar @_ > 0) {
-		my $top_level_param = shift;
+    # loop through parameters adding each name as a top-level state hash and accessor functions
+    while ( scalar @_ > 0 ) {
+        my $top_level_param = shift;
 
-		# create top-level hash named for the parameter
-		$self->{$top_level_param} = {};
+        # create top-level hash named for the parameter
+        $self->{$top_level_param} = {};
 
-		# generate class accessor methods named for the parameter
-		{
-			## no critic (ProhibitNoStrict)
-			no strict qw(refs);
+        # generate class accessor methods named for the parameter
+        {
+            ## no critic (ProhibitNoStrict)
+            no strict qw(refs);
 
-			# accessor fieldname()
-			if (! $class->can($top_level_param)) { 
-				*{$class."::".$top_level_param} = sub { return $class->accessor($top_level_param, @_); };
-			}
+            # accessor fieldname()
+            if ( !$class->can($top_level_param) ) {
+                *{ $class . "::" . $top_level_param } = sub { return $class->accessor( $top_level_param, @_ ); };
+            }
 
-			# accessor has_fieldname()
-			if (! $class->can("has_".$top_level_param)) {
-				*{$class."::has_".$top_level_param} = sub { return $class->has($top_level_param, @_); };
-			}
-		}
-	}
-	return;
+            # accessor has_fieldname()
+            if ( !$class->can( "has_" . $top_level_param ) ) {
+                *{ $class . "::has_" . $top_level_param } = sub { return $class->has( $top_level_param, @_ ); };
+            }
+        }
+    }
+    return;
 }
 
 # get top level state
 sub state
 {
-	my ($package, $filename, $line) = caller;
-	($package eq "PiFlash::State" or $package->isa("PiFlash::State"))
-		or croak "internal-use-only function called by $package at $filename line $line";
-	return $PiFlash::State::state;
+    my ( $package, $filename, $line ) = caller;
+    ( $package eq "PiFlash::State" or $package->isa("PiFlash::State") )
+        or croak "internal-use-only function called by $package at $filename line $line";
+    return $PiFlash::State::state;
 }
 
 # state value get/set accessor
 # class method
-sub accessor {
-	my $class = shift;
-	my $top_level_param = shift;
-	my $name = shift;
-	my $value = shift;
-	my $self = $class->state();
-	if (defined $value) {
-		# got name & value - set the new value for name
-		$self->{$top_level_param}{$name} = $value;
-		return;
-	} elsif (defined $name) {
-		# got only name - return the value/ref of name
-		return (exists $self->{$top_level_param}{$name})
-			? $self->{$top_level_param}{$name}
-			: undef;
-	} else {
-		# no name or value - return ref to top-level hash (top_level_parameter from init() context)
-		return $self->{$top_level_param};
-	}
+sub accessor
+{
+    my $class           = shift;
+    my $top_level_param = shift;
+    my $name            = shift;
+    my $value           = shift;
+    my $self            = $class->state();
+    if ( defined $value ) {
+
+        # got name & value - set the new value for name
+        $self->{$top_level_param}{$name} = $value;
+        return;
+    } elsif ( defined $name ) {
+
+        # got only name - return the value/ref of name
+        return ( exists $self->{$top_level_param}{$name} )
+            ? $self->{$top_level_param}{$name}
+            : undef;
+    } else {
+
+        # no name or value - return ref to top-level hash (top_level_parameter from init() context)
+        return $self->{$top_level_param};
+    }
 }
 
 # check if a top level state has a key
 # class method
 sub has
 {
-	my $class = shift;
-	my $self = $class->state();
-	my $top_level_param = shift;
-	my $name = shift;
-	return ((exists $self->{$top_level_param}) and (exists $self->{$top_level_param}{$name}));
+    my $class           = shift;
+    my $self            = $class->state();
+    my $top_level_param = shift;
+    my $name            = shift;
+    return ( ( exists $self->{$top_level_param} ) and ( exists $self->{$top_level_param}{$name} ) );
 }
 
 # return boolean value for verbose mode
 sub verbose
 {
-	return PiFlash::State::cli_opt("verbose") // 0;
+    return PiFlash::State::cli_opt("verbose") // 0;
 }
 
 # return boolean value for logging mode (recording run data without printing verbose messages, intended for testing)
 sub logging
 {
-	return PiFlash::State::cli_opt("logging") // 0;
+    return PiFlash::State::cli_opt("logging") // 0;
 }
 
 # dump data structure recursively, part of verbose/logging state output
@@ -197,111 +200,122 @@ sub logging
 # object method
 sub odump
 {
-	my ($obj, $level) = @_;
-	if (!defined $obj) {
-		# bail out for undefined value
-		return "";
-	}
-	if (!ref $obj) {
-		# process plain scalar
-		return ("    " x $level)."[value]".$obj."\n";
-	}
-	if (ref $obj eq "SCALAR") {
-		# process scalar reference
-		return ("    " x $level).($$obj // "undef")."\n";
-	}
-	if (ref $obj eq "HASH" or ref $obj eq "PiFlash::State"
-		or (ref $obj =~ /^PiFlash::/x and $obj->isa("PiFlash::Object")))
-	{
-		# process hash reference
-		my $str = "";
-		foreach my $key (sort {lc $a cmp lc $b} keys %$obj) {
-			if (ref $obj->{$key}) {
-				$str .= ("    " x $level)."$key:"."\n";
-				$str .= odump($obj->{$key}, $level+1);
-			} else {
-				$str .= ("    " x $level)."$key: ".($obj->{$key} // "undef")."\n";
-			}
-		}
-		return $str;
-	}
-	if (ref $obj eq "ARRAY") {
-		# process array reference
-		my $str = "";
-		foreach my $entry (@$obj) {
-			if (ref $entry) {
-				$str .= odump($entry, $level+1);
-			} else {
-				$str .= ("    " x $level)."$entry\n";
-			}
-		}
-		return $str;
-	}
-	if (ref $obj eq "CODE") {
-		# process function reference
-		return ("    " x $level)."[function]$obj"."\n";
-	}
-	# other references/unknown type
-	my $type = ref $obj;
-	return ("    " x $level)."[$type]$obj"."\n";
+    my ( $obj, $level ) = @_;
+    if ( !defined $obj ) {
+
+        # bail out for undefined value
+        return "";
+    }
+    if ( !ref $obj ) {
+
+        # process plain scalar
+        return ( "    " x $level ) . "[value]" . $obj . "\n";
+    }
+    if ( ref $obj eq "SCALAR" ) {
+
+        # process scalar reference
+        return ( "    " x $level ) . ( $$obj // "undef" ) . "\n";
+    }
+    if (   ref $obj eq "HASH"
+        or ref $obj eq "PiFlash::State"
+        or ( ref $obj =~ /^PiFlash::/x and $obj->isa("PiFlash::Object") ) )
+    {
+        # process hash reference
+        my $str = "";
+        foreach my $key ( sort { lc $a cmp lc $b } keys %$obj ) {
+            if ( ref $obj->{$key} ) {
+                $str .= ( "    " x $level ) . "$key:" . "\n";
+                $str .= odump( $obj->{$key}, $level + 1 );
+            } else {
+                $str .= ( "    " x $level ) . "$key: " . ( $obj->{$key} // "undef" ) . "\n";
+            }
+        }
+        return $str;
+    }
+    if ( ref $obj eq "ARRAY" ) {
+
+        # process array reference
+        my $str = "";
+        foreach my $entry (@$obj) {
+            if ( ref $entry ) {
+                $str .= odump( $entry, $level + 1 );
+            } else {
+                $str .= ( "    " x $level ) . "$entry\n";
+            }
+        }
+        return $str;
+    }
+    if ( ref $obj eq "CODE" ) {
+
+        # process function reference
+        return ( "    " x $level ) . "[function]$obj" . "\n";
+    }
+
+    # other references/unknown type
+    my $type = ref $obj;
+    return ( "    " x $level ) . "[$type]$obj" . "\n";
 }
 
 # die/exception with verbose state dump
 # class method
 sub error
 {
-	## no critic (ProhibitPackageVars)
-	my $class = shift;
-	my $message = shift;
-	croak "error: ".$message.((verbose() or logging())
-		? "\nProgram state dump...\n".odump($PiFlash::State::state,0) : "");
+    ## no critic (ProhibitPackageVars)
+    my $class   = shift;
+    my $message = shift;
+    croak "error: " . $message
+        . ( ( verbose() or logging() ) ? "\nProgram state dump...\n" . odump( $PiFlash::State::state, 0 ) : "" );
 }
 
 # read YAML configuration file
 sub read_config
 {
-	my $filepath = shift;
+    my $filepath = shift;
 
-	# if the provided file name exists and ...
-	if ( -f $filepath) {
-		# capture as many YAML documents as can be parsed from the configuration file
-		my @yaml_docs = eval { YAML::XS::LoadFile($filepath); };
-		if ($@) {
-			PiFlash::State->error("PiFlash::State::read_config error reading $filepath: $@");
-		}
+    # if the provided file name exists and ...
+    if ( -f $filepath ) {
 
-		# save the first YAML document as the configuration
-		my $yaml_config = shift @yaml_docs;
-		if (ref $yaml_config eq "HASH") {
-			# if it's a hash, then use all its mappings in PiFlash::State::config
-			$PiFlash::State::state->{config} = $yaml_config;
-		} else {
-			# otherwise save the reference in a config entry called config
-			PiFlash::State::config("config", $yaml_config);
-		}
+        # capture as many YAML documents as can be parsed from the configuration file
+        my @yaml_docs = eval { YAML::XS::LoadFile($filepath); };
+        if ($@) {
+            PiFlash::State->error("PiFlash::State::read_config error reading $filepath: $@");
+        }
 
-		# if any other YAML documents were parsed, save them as a list in a config called "docs"
-		# these are available for plugins but not currently defined
-		if (@yaml_docs) {
-			# save the YAML doc structures as a list
-			PiFlash::State::config("docs", \@yaml_docs);
+        # save the first YAML document as the configuration
+        my $yaml_config = shift @yaml_docs;
+        if ( ref $yaml_config eq "HASH" ) {
 
-			# the first doc must be the table of contents with a list of metadata about following docs
-			# others after that are categorized by the plugin name in the metadata
-			my $toc = $yaml_docs[0];
-			if (ref $toc eq "ARRAY") {
-				PiFlash::State::plugin("docs", {toc => $toc});
-				my $docs = PiFlash::State::plugin("docs");
-				for (my $i=1; $i < scalar @yaml_docs; $i++) {
-					($i <= scalar @$toc) or next;
-					if (ref $yaml_docs[$i] eq "HASH" and exists $toc->[$i-1]{type}) {
-						my $type = $toc->[$i-1]{type};
-						$docs->{$type} = $yaml_docs[$i];
-					}
-				}
-			}
-		}
-	}
+            # if it's a hash, then use all its mappings in PiFlash::State::config
+            $PiFlash::State::state->{config} = $yaml_config;
+        } else {
+
+            # otherwise save the reference in a config entry called config
+            PiFlash::State::config( "config", $yaml_config );
+        }
+
+        # if any other YAML documents were parsed, save them as a list in a config called "docs"
+        # these are available for plugins but not currently defined
+        if (@yaml_docs) {
+
+            # save the YAML doc structures as a list
+            PiFlash::State::config( "docs", \@yaml_docs );
+
+            # the first doc must be the table of contents with a list of metadata about following docs
+            # others after that are categorized by the plugin name in the metadata
+            my $toc = $yaml_docs[0];
+            if ( ref $toc eq "ARRAY" ) {
+                PiFlash::State::plugin( "docs", { toc => $toc } );
+                my $docs = PiFlash::State::plugin("docs");
+                for ( my $i = 1 ; $i < scalar @yaml_docs ; $i++ ) {
+                    ( $i <= scalar @$toc ) or next;
+                    if ( ref $yaml_docs[$i] eq "HASH" and exists $toc->[ $i - 1 ]{type} ) {
+                        my $type = $toc->[ $i - 1 ]{type};
+                        $docs->{$type} = $yaml_docs[$i];
+                    }
+                }
+            }
+        }
+    }
     return;
 }
 

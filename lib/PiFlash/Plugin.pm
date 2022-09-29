@@ -7,15 +7,17 @@
 use strict;
 use warnings;
 use utf8;
-use 5.01400; # require 2011 or newer version of Perl
+use 5.01400;    # require 2011 or newer version of Perl
 ## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Plugin;
 
-use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
+use autodie;   # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use parent 'PiFlash::Object';
 use PiFlash::State;
-use Module::Pluggable require => 1, search_path => [__PACKAGE__]; # RPM: perl-Module-Pluggable, DEB: libmodule-pluggable-perl
+use Module::Pluggable
+    require     => 1,
+    search_path => [__PACKAGE__];    # RPM: perl-Module-Pluggable, DEB: libmodule-pluggable-perl
 
 # ABSTRACT: plugin extension interface for PiFlash
 
@@ -72,62 +74,65 @@ Patches and enhancements may be submitted via a pull request at L<https://github
 # used by PiFlash::Object for new() method
 sub object_params
 {
-	return qw(name class);
+    return qw(name class);
 }
 
 # initialize enabled plugins
 # class method
 sub init_plugins
 {
-	# get list of enabled plugins from command line and config file
-	my %enabled;
-	if (PiFlash::State::has_cli_opt("plugin")) {
-		foreach my $plugin ( split(/[^\w:]+/x, PiFlash::State::cli_opt("plugin") // "")) {
-			next if $plugin eq "";
-			$plugin =~ s/^.*:://x;
-			$enabled{$plugin} = 1;
-		}
-	}
-	if (PiFlash::State::has_config("plugin")) {
-		foreach my $plugin ( split(/[^\w:]+/x, PiFlash::State::config("plugin") // "")) {
-			next if $plugin eq "";
-			$plugin =~ s/^.*:://x;
-			$enabled{$plugin} = 1;
-		}
-	}
+    # get list of enabled plugins from command line and config file
+    my %enabled;
+    if ( PiFlash::State::has_cli_opt("plugin") ) {
+        foreach my $plugin ( split( /[^\w:]+/x, PiFlash::State::cli_opt("plugin") // "" ) ) {
+            next if $plugin eq "";
+            $plugin =~ s/^.*:://x;
+            $enabled{$plugin} = 1;
+        }
+    }
+    if ( PiFlash::State::has_config("plugin") ) {
+        foreach my $plugin ( split( /[^\w:]+/x, PiFlash::State::config("plugin") // "" ) ) {
+            next if $plugin eq "";
+            $plugin =~ s/^.*:://x;
+            $enabled{$plugin} = 1;
+        }
+    }
 
-	# for each enabled plugin, allocate state storage, load its config (if any) and run its init method
-	my @plugins_available = PiFlash::Plugin->plugins();
-	foreach my $plugin (@plugins_available) {
-		# fool function that it was called as class method
-		# we don't call the subclass' method until we're sure the class is loaded
-		# but we know it will inherit the method function from here
-		my $modname = PiFlash::Plugin::get_modname($plugin);
+    # for each enabled plugin, allocate state storage, load its config (if any) and run its init method
+    my @plugins_available = PiFlash::Plugin->plugins();
+    foreach my $plugin (@plugins_available) {
 
-		# check if the module is enabled by user from config or CLI
-		if (exists $enabled{$modname}) {
-			# load the plugin code if its symbol table doesn't already exist (not already defined by a loaded module)
-			(defined(*{$plugin."::"})) or require $plugin;
+        # fool function that it was called as class method
+        # we don't call the subclass' method until we're sure the class is loaded
+        # but we know it will inherit the method function from here
+        my $modname = PiFlash::Plugin::get_modname($plugin);
 
-			# verify it's a subclass of PiFlash::Plugin
-			if ($plugin->isa("PiFlash::Plugin")) {
-				# skip if its object/storage area exists
-				if (PiFlash::State::has_plugin($modname)) {
-					next;
-				}
+        # check if the module is enabled by user from config or CLI
+        if ( exists $enabled{$modname} ) {
 
-				# find any YAML documents addressed to this plugin from the config file
-				my @data;
-				my $plugin_docs = PiFlash::State::plugin("docs");
-				if (exists $plugin_docs->{$modname}) {
-					push @data, ("config" => $plugin_docs->{$modname});
-				}
+            # load the plugin code if its symbol table doesn't already exist (not already defined by a loaded module)
+            ( defined( *{ $plugin . "::" } ) ) or require $plugin;
 
-				# if the plugin class has an init() method, inherited PiFlash::Object->new() will call it
-				PiFlash::State::plugin($modname, $plugin->new({name => $modname, class => $plugin, @data}));
-			}
-		}
-	}
+            # verify it's a subclass of PiFlash::Plugin
+            if ( $plugin->isa("PiFlash::Plugin") ) {
+
+                # skip if its object/storage area exists
+                if ( PiFlash::State::has_plugin($modname) ) {
+                    next;
+                }
+
+                # find any YAML documents addressed to this plugin from the config file
+                my @data;
+                my $plugin_docs = PiFlash::State::plugin("docs");
+                if ( exists $plugin_docs->{$modname} ) {
+                    push @data, ( "config" => $plugin_docs->{$modname} );
+                }
+
+                # if the plugin class has an init() method, inherited PiFlash::Object->new() will call it
+                PiFlash::State::plugin( $modname, $plugin->new( { name => $modname, class => $plugin, @data } ) );
+            }
+        }
+    }
     return;
 }
 
@@ -135,20 +140,20 @@ sub init_plugins
 # class method
 sub get_modname
 {
-	my $class = shift;
-	if ($class =~ /^PiFlash::Plugin::([A-Z]\w+)/x) {
-		return $1;
-	}
-	return;
+    my $class = shift;
+    if ( $class =~ /^PiFlash::Plugin::([A-Z]\w+)/x ) {
+        return $1;
+    }
+    return;
 }
 
 # find the data/instance for the plugin
 # class method
 sub get_data
 {
-	my $class = shift;
-	my $modname = $class->get_modname();
-	return PiFlash::State::plugin($modname);
+    my $class   = shift;
+    my $modname = $class->get_modname();
+    return PiFlash::State::plugin($modname);
 }
 
 1;

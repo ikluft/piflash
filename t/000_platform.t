@@ -5,8 +5,8 @@ use strict;
 use warnings;
 use Config;
 
-use Test::More tests => 1;                      # last test to print
+use Test::More tests => 1;    # last test to print
 
-is($Config{osname}, "linux", "PiFlash only runs on Linux");
+is( $Config{osname}, "linux", "PiFlash only runs on Linux" );
 
 1;

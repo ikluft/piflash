@@ -7,12 +7,12 @@
 use strict;
 use warnings;
 use utf8;
-use 5.01400; # require 2011 or newer version of Perl
+use 5.01400;    # require 2011 or newer version of Perl
 ## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Object;
 
-use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
+use autodie;   # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Carp qw(confess);
 
 # ABSTRACT:object functions for PiFlash classes
@@ -51,32 +51,32 @@ Patches and enhancements may be submitted via a pull request at L<https://github
 # this should only be called from add() with coderef/caller/origin parameters
 sub new
 {
-        my ( $class, $params, @args ) = @_;
+    my ( $class, $params, @args ) = @_;
 
-		# instantiate an object of the class
-        my $self = {};
-        bless $self, $class;
+    # instantiate an object of the class
+    my $self = {};
+    bless $self, $class;
 
-        # initialize parameters
-        foreach my $key (keys %$params) {
-			$self->{$key} = $params->{$key};
-        }
+    # initialize parameters
+    foreach my $key ( keys %$params ) {
+        $self->{$key} = $params->{$key};
+    }
 
-		# chack for missing required parameters
-        my @missing;
-        foreach my $required ($class->object_params()) {
-			exists $self->{$required} or push @missing, $required;
-        }
-        if (@missing) {
-			confess $class."->new() missing required parameters: ".join(" ", @missing);
-        }
+    # chack for missing required parameters
+    my @missing;
+    foreach my $required ( $class->object_params() ) {
+        exists $self->{$required} or push @missing, $required;
+    }
+    if (@missing) {
+        confess $class. "->new() missing required parameters: " . join( " ", @missing );
+    }
 
-		# if init() class method exists, call it with any remaining parameters
-		if ($class->can("init")) {
-			$self->init(@args);
-		}
+    # if init() class method exists, call it with any remaining parameters
+    if ( $class->can("init") ) {
+        $self->init(@args);
+    }
 
-        return $self;
+    return $self;
 }
 
 1;

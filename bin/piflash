@@ -3,14 +3,14 @@
 # by Ian Kluft
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
+use 5.01400; # require 2011 or newer version of Perl
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use PiFlash;
 
 # PODNAME: piflash
 # ABSTRACT: Raspberry Pi SD-flashing script with safety checks to avoid erasing the wrong device
 
-=head1 SYNOPSIS
+=head1 USAGE
 
  piflash [--verbose] [--resize] [--config conf-file] input-file output-device
 
@@ -110,12 +110,6 @@ libmagic/file-libs, File::LibMagic (perl), IO (perl), Exception::Class (perl), M
 
 =back
 
-=head2 Piflash script
-
-This is the Perl distribution PiFlash.
- 
-Installing PiFlash is straightforward.
- 
 =head3 Installation with cpanm
  
 If you have cpanm, you only need one line:
@@ -175,7 +169,12 @@ L<https://www.cpan.org/modules/INSTALL.html>
 A list of online resources for PiFlash is at L<https://metacpan.org/pod/distribution/PiFlash/doc/resources.pod>
 including where to download Raspberry Pi bootable image files and articles/presentations about PiFlash.
 
-=head2 Bug reporting
+=head1 EXIT STATUS
+
+As standard for Unix command-line programs, piflash returns 0 for success and 1 if an error occurred.
+Error messages are reported on the standard output.
+
+=head1 BUGS AND LIMITATIONS
 
 Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
 
@@ -187,6 +186,8 @@ to add "[redacted]" where you removed something so it's clear what happened.
 For any SD card reader hardware which piflash fails to recognize (and therefore refuses to write to),
 please describe the hardware as best you can including name, product number, bus (USB, PCI, etc),
 any known controller chips.
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
 
 =cut
 

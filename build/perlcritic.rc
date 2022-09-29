@@ -15,7 +15,7 @@ equivalent_modules = Moo Modern::Perl
 
 [Documentation::RequirePodSections]
 lib_sections = NAME | VERSION | SYNOPSIS | DESCRIPTION | BUGS AND LIMITATIONS | AUTHOR | COPYRIGHT AND LICENSE
-script_sections = NAME | USAGE | OPTIONS | EXIT STATUS | BUGS AND LIMITATIONS | AUTHOR | COPYRIGHT AND LICENSE
+script_sections = NAME | USAGE | DESCRIPTION | EXIT STATUS | BUGS AND LIMITATIONS | AUTHOR | COPYRIGHT AND LICENSE
 
 [Subroutines::ProhibitExcessComplexity]
 max_mccabe = 20

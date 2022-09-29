@@ -1,21 +1,27 @@
 # PiFlash::MediaWriter - write to Raspberry Pi SD card installation with scriptable customization
 # by Ian Kluft
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
-use PiFlash::State;
-use PiFlash::Command;
-use PiFlash::Inspector;
-use PiFlash::Hook;
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::MediaWriter;
 
 use autodie; # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
+use Carp qw(carp croak);
 use Try::Tiny;
 use File::Basename;
 use File::Slurp qw(slurp);
 use File::Temp;
+use PiFlash::State;
+use PiFlash::Command;
+use PiFlash::Inspector;
+use PiFlash::Hook;
 
 # ABSTRACT: write to Raspberry Pi SD card installation with scriptable customization
 
@@ -28,6 +34,12 @@ use File::Temp;
 =head1 SEE ALSO
 
 L<piflash>, L<PiFlash::Command>, L<PiFlash::Inspector>, L<PiFlash::State>
+
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
 
 =cut
 
@@ -101,7 +113,7 @@ sub reread_pt
 		if ($@) {
 			if (ref $@) {
 				# reference means unrecognized error - rethrow the exception
-				die $@;
+				croak $@;
 			} elsif ($@ =~ /exited with value 1/) {
 				# exit status 1 means retry
 				$tries--;
@@ -111,16 +123,17 @@ sub reread_pt
 					next;
 				}
 				# otherwise fail for repeated failed retries
-				die $@;
+				croak $@;
 			} else {
 				# other unrecognized error - rethrow the exception
-				die $@;
+				croak $@;
 			}
 		}
 
 		# got through without an error - done
 		last;
 	}
+    return;
 }
 
 # look up boot and root partition & filesystem info
@@ -129,12 +142,12 @@ sub get_sd_partitions
 {
 	my $output = PiFlash::State::output();
 	(exists $output->{partitions}) and return;
-	my @partitions = grep {/part\s*$/} PiFlash::Command::cmd2str("lsblk - find partitions",
+	my @partitions = grep {/part\s*$/x} PiFlash::Command::cmd2str("lsblk - find partitions",
 		PiFlash::Command::prog("lsblk"), "--list", PiFlash::State::output("path"));
 
 	if (@partitions) {
 		for (my $i=0; $i<scalar @partitions; $i++) {
-			$partitions[$i] =~ s/^([^\s]+)\s.*/$1/;
+			$partitions[$i] =~ s/^([^\s]+)\s.*/$1/diex;
 		}
 		my $part_boot = $partitions[0];
 		my $num_root = scalar @partitions;
@@ -155,6 +168,7 @@ sub get_sd_partitions
 		}
 		print "\n";
 	}
+    return;
 }
 
 # flash the output device from the input file
@@ -187,10 +201,9 @@ sub flash_device
 			say "formatting $fstype filesystem for Raspberry Pi NOOBS system...";
 			PiFlash::Command::cmd("write partition table", PiFlash::Command::prog("echo"), "type=c", "|",
 				PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), PiFlash::State::output("path"));
-			my @partitions = grep {/part\s*$/} PiFlash::Command::cmd2str("lsblk - find partitions",
+			my @partitions = grep {/part\s*$/x} PiFlash::Command::cmd2str("lsblk - find partitions",
 				PiFlash::Command::prog("lsblk"), "--list", PiFlash::State::output("path"));
-			$partitions[0] =~ /^([^\s]+)\s/;
-			my $partition = "/dev/".$1;
+			my $partition = "/dev/".(substr $partitions[0], 0, index($partitions[0], ' '));
 			PiFlash::Command::cmd("format sd card", PiFlash::Command::prog("sudo"),
 				PiFlash::Command::prog("mkfs.$fstype"), "-n", $label, $partition);
 			my $mntdir = PiFlash::State::system("media_dir")."/piflash/sdcard";
@@ -245,7 +258,7 @@ sub flash_device
 
 			if (defined $fstype_root) {
                 my @sfdisk_resize_input = ( ", +" );
-                if ( $fstype_root =~ /^ext[234]/ ) {
+                if ( $fstype_root =~ /^ext[234]/x ) {
                     # ext2/3/4 filesystem can be resized
                     PiFlash::Command::cmd2str(\@sfdisk_resize_input, "resize partition",
                         PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"), "--quiet",
@@ -276,10 +289,10 @@ sub flash_device
                         PiFlash::Command::prog("umount"), $mnt_root);
                     reread_pt("resize $fstype_root"); # re-read partition table, use multiple tries if necessary
                 } else {
-                    warn "unrecognized filesystem type $fstype_root - resize not attempted";
+                    carp "unrecognized filesystem type $fstype_root - resize not attempted";
                 }
 			} else {
-				warn "unknown filesystem type - resize not attempted";
+				carp "unknown filesystem type - resize not attempted";
 			}
 		}
 
@@ -287,10 +300,8 @@ sub flash_device
 		if (PiFlash::Hook::has("fs_mount")) {
 			reread_pt("filesystem hooks"); # re-read partition table, use multiple tries if necessary
 			get_sd_partitions();
-			my @partitions = PiFlash::State::output("partitions");
 			my $fstype_boot = PiFlash::State::output("fstype_boot");
 			my $dev_boot = "/dev/".PiFlash::State::output("part_boot");
-			my $fstype_root = PiFlash::State::output("fstype_root");
 			my $dev_root = "/dev/".PiFlash::State::output("part_root");
 			my $mntdir = PiFlash::State::system("media_dir")."/piflash/sdcard";
 			my $mnt_boot = $mntdir."/boot";
@@ -316,6 +327,7 @@ sub flash_device
 
 	# report that it's done
 	say "done - it is safe to remove the SD card";
+    return;
 }
 
 1;

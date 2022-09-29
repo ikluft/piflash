@@ -1,9 +1,14 @@
 # PiFlash::Object - object functions for PiFlash classes
 # by Ian Kluft
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Object;
 
@@ -34,14 +39,19 @@ In order to use it, the class must define a class method called object_params() 
 
 L<piflash>, L<PiFlash::Hook>, L<PiFlash::Plugin>
 
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
+
 =cut
 
 # new() - internal function to instantiate hook object
 # this should only be called from add() with coderef/caller/origin parameters
 sub new
 {
-        my $class = shift;
-        my $params = shift;
+        my ( $class, $params, @args ) = @_;
 
 		# instantiate an object of the class
         my $self = {};
@@ -63,7 +73,7 @@ sub new
 
 		# if init() class method exists, call it with any remaining parameters
 		if ($class->can("init")) {
-			$self->init(@_);
+			$self->init(@args);
 		}
 
         return $self;

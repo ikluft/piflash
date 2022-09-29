@@ -1,12 +1,14 @@
 # PiFlash::Command - run commands including fork paramaters and piping input & output
 # by Ian Kluft
-use strict;
-use warnings;
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
-use PiFlash::State;
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Command;
 
@@ -15,6 +17,7 @@ use POSIX; # included with perl
 use IO::Handle; # rpm: "dnf install perl-IO", deb: included with perl
 use IO::Poll qw(POLLIN POLLHUP); # same as IO::Handle
 use Carp qw(carp croak);
+use PiFlash::State;
 
 # ABSTRACT: process/command running utilities for piflash
 
@@ -32,6 +35,12 @@ their input and output.
 =head1 SEE ALSO
 
 L<piflash>, L<PiFlash::Inspector>, L<PiFlash::State>
+
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
 
 =cut
 
@@ -63,6 +72,8 @@ sub fork_child
 # command logging function
 sub cmd_log
 {
+    my @args = @_;
+
 	# record all command return codes, stdout & stderr in a new top-level store in State
 	# it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
 	if (PiFlash::State::verbose() or PiFlash::State::logging()) {
@@ -70,27 +81,28 @@ sub cmd_log
 		if (!exists $log->{cmd}) {
 			$log->{cmd} = [];
 		}
-		push @{$log->{cmd}}, { @_ };
+		push @{$log->{cmd}}, { @args };
 	}
+    return;
 }
 
 # fork/exec wrapper to run child processes and collect output/error results
 # used as lower level call by cmd() and cmd2str()
 # adds more capability than qx()/backtick/system - wrapper lets us send input & capture output/error data
-## no critic (RequireArgUnpacking)
 sub fork_exec
 {
+    my @args = @_;
+
 	# input for child process may be provided as reference to array - use it and remove it from parameters
 	my @input;
-	if ( ref $_[0] eq "ARRAY" ) {
-		my $input_ref = shift;
+	if ( ref $args[0] eq "ARRAY" ) {
+		my $input_ref = shift @args;
 		@input = @$input_ref;
 	}
 	if (PiFlash::State::verbose()) {
-		say STDERR "fork_exec running: ".join(" ", @_);
+		say STDERR "fork_exec running: ".join(" ", @args);
 	}
-	my $cmdname = shift;
-	my @args = @_;
+	my $cmdname = shift @args;
 
 	# open pipes for child process stdin, stdout, stderr
 	my ($child_in_reader, $child_in_writer, $child_out_reader, $child_out_writer,
@@ -218,7 +230,6 @@ sub fork_exec
 	# return output/error
 	return @text;
 }
-## use critic
 
 # run a command
 # usage: cmd( label, command_line)
@@ -226,14 +237,12 @@ sub fork_exec
 #   command_line: shell command line (pipes and other shell metacharacters allowed)
 # note: if there are no shell special characters then all command-line parameters need to be passed separately.
 # If there are shell special characters then it will be given to the shell for parsing.
-## no critic (RequireArgUnpacking)
 sub cmd
 {
-	my $cmdname = shift;
+    my ( $cmdname, @args ) = @_;
 	if (PiFlash::State::verbose()) {
-		say STDERR "cmd running: ".join(" ", @_);
+		say STDERR "cmd running: ".join(" ", @args);
 	}
-	my @args = @_;
 	system (@args);
 	cmd_log (
 		cmdname => $cmdname,
@@ -251,26 +260,23 @@ sub cmd
 	}
 	return 1;
 }
-## use critic
 
 # run a command and return the output as a string
 # This originally used qx() to fork child process and obtain output.  But Perl::Critic discourages use of qx/backtick.
 # And it would be useful to provide input to child process, rather than using a wasteful echo-to-pipe shell command.
 # So the fork_exec_wrapper() was added as a lower-level base for cmd() and cmd2str().
-## no critic (RequireArgUnpacking)
 sub cmd2str
 {
-	my $cmdname = shift;
-	my ($out, $err) = fork_exec($cmdname, @_);
+	my ( $cmdname, @args ) = @_;
+	my ($out, $err) = fork_exec($cmdname, @args);
 	if (defined $err) {
 		carp("$cmdname had error output:\n".$err);
 	}
 	if (wantarray) {
-		return split /\n/, $out;
+		return split /\n/x, $out;
 	}
 	return $out;
 }
-## use critic
 
 # generate name of environment variable for where to find a command
 # this is broken out as a separate function for tests to use it
@@ -278,12 +284,11 @@ sub envprog
 {
 	my $progname = shift;
 	my $envprog = (uc $progname)."_PROG";
-	$envprog =~ s/[\W-]+/_/g; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
+	$envprog =~ s/[\W-]+/_/xg; # collapse any sequences of non-alphanumeric/non-underscore to a single underscore
 	return $envprog;
 }
 
 # look up secure program path
-## no critic (RequireFinalReturn)
 sub prog
 {
 	my $progname = shift;
@@ -322,6 +327,5 @@ sub prog
 	PiFlash::State->error("unknown secure location for $progname - install it or set "
 			."$envprog to point to it");
 }
-## use critic
 
 1;

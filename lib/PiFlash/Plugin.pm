@@ -1,9 +1,14 @@
 # PiFlash::Plugin - plugin extension interface for PiFlash
 # by Ian Kluft
 
+# pragmas to silence some warnings from Perl::Critic
+## no critic (Modules::RequireExplicitPackage)
+# This solves a catch-22 where parts of Perl::Critic want both package and use-strict to be first
 use strict;
 use warnings;
-use v5.14.0; # require 2011 or newer version of Perl
+use utf8;
+use 5.01400; # require 2011 or newer version of Perl
+## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Plugin;
 
@@ -54,6 +59,12 @@ PiFlash during plugin initialization.
 
 L<piflash>, L<PiFlash::State>, L<PiFlash::Hook>, 
 
+=head1 BUGS AND LIMITATIONS
+
+Report bugs via GitHub at L<https://github.com/ikluft/piflash/issues>
+
+Patches and enhancements may be submitted via a pull request at L<https://github.com/ikluft/piflash/pulls>
+
 =cut
 
 # required parameter list
@@ -71,16 +82,16 @@ sub init_plugins
 	# get list of enabled plugins from command line and config file
 	my %enabled;
 	if (PiFlash::State::has_cli_opt("plugin")) {
-		foreach my $plugin ( split(/[^\w:]+/, PiFlash::State::cli_opt("plugin") // "")) {
+		foreach my $plugin ( split(/[^\w:]+/x, PiFlash::State::cli_opt("plugin") // "")) {
 			next if $plugin eq "";
-			$plugin =~ s/^.*:://;
+			$plugin =~ s/^.*:://x;
 			$enabled{$plugin} = 1;
 		}
 	}
 	if (PiFlash::State::has_config("plugin")) {
-		foreach my $plugin ( split(/[^\w:]+/, PiFlash::State::config("plugin") // "")) {
+		foreach my $plugin ( split(/[^\w:]+/x, PiFlash::State::config("plugin") // "")) {
 			next if $plugin eq "";
-			$plugin =~ s/^.*:://;
+			$plugin =~ s/^.*:://x;
 			$enabled{$plugin} = 1;
 		}
 	}
@@ -117,6 +128,7 @@ sub init_plugins
 			}
 		}
 	}
+    return;
 }
 
 # derive module name from class name
@@ -124,7 +136,7 @@ sub init_plugins
 sub get_modname
 {
 	my $class = shift;
-	if ($class =~ /^PiFlash::Plugin::([A-Z]\w+)/) {
+	if ($class =~ /^PiFlash::Plugin::([A-Z]\w+)/x) {
 		return $1;
 	}
 	return;

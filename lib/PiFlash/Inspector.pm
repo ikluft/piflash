@@ -50,14 +50,39 @@ Patches and enhancements may be submitted via a pull request at L<https://github
 =cut
 
 #
-# class-global variables
+# constants
 #
 
 # recognized file suffixes which SD cards can be flashed from
 Readonly::Array my @known_suffixes => qw(gz zip xz img);
 
+# prefix for functions to process specific file types for embedded boot images
+Readonly::Scalar my $process_func_prefix => "process_file_";
+
+# list of libmagic file strings corellated to file type strings as pairs
+Readonly::Array my @magic_to_type => (
+    [ qr(^Zip archive data)ix, "zip" ],
+    [ qr(^gzip compressed data)ix, "gz" ],
+    [ qr(^XZ compressed data)ix, "xz" ],
+    [ qr(^DOS\/MBR boot sector)ix, "img" ],
+);
+
+# list of libmagic file strings corellated to filesystems as pairs
+# a code of 1 means use $1 from regex match, and convert it to lower case
+Readonly::Array my @magic_to_fs => (
+    [ qr(^Linux rev \d+.\d+ (ext[234]) filesystem data,)ix, 1 ],
+    [ qr(^(\w+) Filesystem)ix, 1 ],
+    [ qr(\s+(\w+)\sfilesystem)ix, 1 ],
+    [ qr(^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),)ix, "vfat" ],
+    [ qr(^Linux\/\w+ swap file)ix, "swap" ],
+);
+
 # block device parameters to collect via lsblk
 Readonly::Array my @blkdev_params => qw(MOUNTPOINT FSTYPE SIZE SUBSYSTEMS TYPE MODEL RO RM HOTPLUG PHY-SEC);
+
+#
+# system data collection functions
+#
 
 # collect data about the system: kernel specs, program locations
 sub collect_system_info
@@ -118,6 +143,100 @@ sub collect_system_info
     return;
 }
 
+# collect input file info - extra steps for zip file
+sub process_file_zip
+{
+    my $input = PiFlash::State::input();
+
+    # process zip archives
+    my @zip_content =
+        PiFlash::Command::cmd2str( "unzip - list contents", PiFlash::Command::prog("unzip"), "-l", $input->{path} );
+    chomp @zip_content;
+    my $found_build_data = 0;
+    my @imgfiles;
+    my $zip_lastline = pop @zip_content;    # last line contains total size
+    {
+        my $size = $zip_lastline;           # get last line of unzip output with total size
+        $size =~ s/^ \s*//x;                # remove leading whitespace
+        $size =~ s/[^\d]*$//x;              # remove anything else after numeric digits
+        $input->{size} = $size;
+    }
+    foreach my $zc_entry (@zip_content) {
+        if ( $zc_entry =~ /\sBUILD-DATA$/x ) {
+            $found_build_data = 1;
+        } elsif ( $zc_entry =~ /^\s*(\d+)\s.*\s([^\s]*)$/x ) {
+            push @imgfiles, [ $2, $1 ];
+        }
+    }
+
+    # detect if the zip archive contains Raspberry Pi NOOBS (New Out Of the Box System)
+    if ($found_build_data) {
+        my @noobs_version = grep { /^NOOBS Version:/x } PiFlash::Command::cmd2str(
+            "unzip - check for NOOBS",
+            PiFlash::Command::prog("unzip"),
+            "-p", $input->{path}, "BUILD-DATA"
+        );
+        chomp @noobs_version;
+        if ( scalar @noobs_version > 0 ) {
+            if ( $noobs_version[0] =~ /^NOOBS Version: (.*)/x ) {
+                $input->{NOOBS} = $1;
+            }
+        }
+    }
+
+    # if NOOBS system was not found, look for a *.img file
+    if ( not exists $input->{NOOBS} ) {
+        if ( scalar @imgfiles == 0 ) {
+            PiFlash::State->error("input file is a zip archive but does not contain a *.img file or NOOBS system");
+        }
+        $input->{imgfile} = $imgfiles[0][0];
+        $input->{size}    = $imgfiles[0][1];
+    }
+    return;
+}
+
+# collect input file info - extra steps for gz file
+sub process_file_gz
+{
+    my $input = PiFlash::State::input();
+
+    # process gzip compressed files
+    my @gunzip_out = PiFlash::Command::cmd2str(
+        "gunzip - list contents",
+        PiFlash::Command::prog("gunzip"),
+        "--list", "--quiet", $input->{path}
+    );
+    chomp @gunzip_out;
+    my @fields = split ' ', @gunzip_out;
+    $input->{size}    = $fields[1];
+    $input->{imgfile} = $fields[3];
+    return;
+}
+
+# collect input file info - extra steps for xz file
+sub process_file_xz
+{
+    my $input = PiFlash::State::input();
+
+    # process xz compressed files
+    if ( $input->{path} =~ /^.*\/([^\/]*\.img)\.xz/x ) {
+        $input->{imgfile} = $1;
+    }
+    my @xz_out = PiFlash::Command::cmd2str(
+        "xz - list contents",
+        PiFlash::Command::prog("xz"),
+        "--robot", "--list", $input->{path}
+    );
+    chomp @xz_out;
+    foreach my $xz_line (@xz_out) {
+        if ( $xz_line =~ /^file\s+\d+\s+\d+\s+\d+\s+(\d+)/x ) {
+            $input->{size} = $1;
+            last;
+        }
+    }
+    return;
+}
+
 # collect input file info
 # verify existence, deduce file type from contents, get size, check for raw filesystem image or NOOBS archive
 sub collect_file_info
@@ -152,14 +271,12 @@ sub collect_file_info
 
     # use libmagic/file to determine file type from contents
     say "input file is a " . $input->{info}{description};
-    if ( $input->{info}{description} =~ /^Zip archive data/ix ) {
-        $input->{type} = "zip";
-    } elsif ( $input->{info}{description} =~ /^gzip compressed data/ix ) {
-        $input->{type} = "gz";
-    } elsif ( $input->{info}{description} =~ /^XZ compressed data/ix ) {
-        $input->{type} = "xz";
-    } elsif ( $input->{info}{description} =~ /^DOS\/MBR boot sector/ix ) {
-        $input->{type} = "img";
+    foreach my $m2t_pair ( @magic_to_type ) {
+        # @magic_to_type constant contains pairs of regex (to match libmagic) and file type string if matched
+        if ( $input->{info}{description} =~ $m2t_pair->[0] ) {
+            $input->{type} = $m2t_pair->[1];
+            last;
+        }
     }
     if ( not exists $input->{type} ) {
         PiFlash::State->error("collect_file_info(): file type not recognized on $input->{path}");
@@ -168,83 +285,11 @@ sub collect_file_info
     # get file size - start with raw file size, update later if it's compressed/archive
     $input->{size} = -s $input->{path};
 
-    # find embedded image in archived/compressed files (either *.img or a NOOBS image)
-    if ( $input->{type} eq "zip" ) {
-
-        # process zip archives
-        my @zip_content =
-            PiFlash::Command::cmd2str( "unzip - list contents", PiFlash::Command::prog("unzip"), "-l", $input->{path} );
-        chomp @zip_content;
-        my $found_build_data = 0;
-        my @imgfiles;
-        my $zip_lastline = pop @zip_content;    # last line contains total size
-        {
-            my $size = $zip_lastline;           # get last line of unzip output with total size
-            $size =~ s/^ \s*//x;                # remove leading whitespace
-            $size =~ s/[^\d]*$//x;              # remove anything else after numeric digits
-            $input->{size} = $size;
-        }
-        foreach my $zc_entry (@zip_content) {
-            if ( $zc_entry =~ /\sBUILD-DATA$/x ) {
-                $found_build_data = 1;
-            } elsif ( $zc_entry =~ /^\s*(\d+)\s.*\s([^\s]*)$/x ) {
-                push @imgfiles, [ $2, $1 ];
-            }
-        }
-
-        # detect if the zip archive contains Raspberry Pi NOOBS (New Out Of the Box System)
-        if ($found_build_data) {
-            my @noobs_version = grep { /^NOOBS Version:/x } PiFlash::Command::cmd2str(
-                "unzip - check for NOOBS",
-                PiFlash::Command::prog("unzip"),
-                "-p", $input->{path}, "BUILD-DATA"
-            );
-            chomp @noobs_version;
-            if ( scalar @noobs_version > 0 ) {
-                if ( $noobs_version[0] =~ /^NOOBS Version: (.*)/x ) {
-                    $input->{NOOBS} = $1;
-                }
-            }
-        }
-
-        # if NOOBS system was not found, look for a *.img file
-        if ( not exists $input->{NOOBS} ) {
-            if ( scalar @imgfiles == 0 ) {
-                PiFlash::State->error("input file is a zip archive but does not contain a *.img file or NOOBS system");
-            }
-            $input->{imgfile} = $imgfiles[0][0];
-            $input->{size}    = $imgfiles[0][1];
-        }
-    } elsif ( $input->{type} eq "gz" ) {
-
-        # process gzip compressed files
-        my @gunzip_out = PiFlash::Command::cmd2str(
-            "gunzip - list contents",
-            PiFlash::Command::prog("gunzip"),
-            "--list", "--quiet", $input->{path}
-        );
-        chomp @gunzip_out;
-        my @fields = split ' ', @gunzip_out;
-        $input->{size}    = $fields[1];
-        $input->{imgfile} = $fields[3];
-    } elsif ( $input->{type} eq "xz" ) {
-
-        # process xz compressed files
-        if ( $input->{path} =~ /^.*\/([^\/]*\.img)\.xz/x ) {
-            $input->{imgfile} = $1;
-        }
-        my @xz_out = PiFlash::Command::cmd2str(
-            "xz - list contents",
-            PiFlash::Command::prog("xz"),
-            "--robot", "--list", $input->{path}
-        );
-        chomp @xz_out;
-        foreach my $xz_line (@xz_out) {
-            if ( $xz_line =~ /^file\s+\d+\s+\d+\s+\d+\s+(\d+)/x ) {
-                $input->{size} = $1;
-                last;
-            }
-        }
+    # find embedded boot image in archived/compressed files of various formats
+    # call the function named by "process_file_" and file type, if it exists
+    if (my $process_func = __PACKAGE__->can( $process_func_prefix.$input->{type} )) {
+        # call function to process the file type
+        $process_func->();
     }
     return;
 }
@@ -474,34 +519,31 @@ sub get_fstype
             PiFlash::Command::prog("blkid"),
             "--probe", "--output=value", "--match-tag=TYPE", $devpath
         );
+    }
 
-        # fallback: use File::LibMagic as backup filesystem type lookup
-        if ( ( not defined $fstype ) or $fstype =~ /^\s*$/x ) {
-            my $magic = File::LibMagic->new();
-            $fstype = undef;
-            $magic->{flags} |= File::LibMagic::MAGIC_DEVICES; # undocumented trick for equivalent of "file -s" on device
-            my $magic_data = $magic->info_from_filename($devpath);
-            if ( PiFlash::State::verbose() ) {
-                for my $key ( keys %$magic_data ) {
-                    say "get_fstype: magic_data/$key = " . $magic_data->{$key};
-                }
+    # fallback 2: use File::LibMagic as backup filesystem type lookup
+    if ( ( not defined $fstype ) or $fstype =~ /^\s*$/x ) {
+        my $magic = File::LibMagic->new();
+        $fstype = undef;
+        $magic->{flags} |= File::LibMagic::MAGIC_DEVICES; # undocumented trick for equivalent of "file -s" on device
+        my $magic_data = $magic->info_from_filename($devpath);
+        if ( PiFlash::State::verbose() ) {
+            for my $key ( keys %$magic_data ) {
+                say "get_fstype: magic_data/$key = " . $magic_data->{$key};
             }
-            if ( $magic_data->{description} =~ /^Linux rev \d+.\d+ (ext[234]) filesystem data,/x ) {
-                $fstype = $1;
-            } elsif ( $magic_data->{description} =~ /^BTRFS Filesystem/x ) {
-                $fstype = "btrfs";
-            } elsif ( $magic_data->{description} =~ /^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),/x )
-            {
-                $fstype = "vfat";
-            } elsif ( $magic_data->{description} =~ /^Linux\/\w+ swap file/x ) {
-                $fstype = "swap";
-            } elsif ( $magic_data->{description} =~ /\s+(\w+)\sfilesystem/ix ) {
-                $fstype = lc $1;
+        }
+
+        # use @magic_to_fs table to check regexes against libmagic result
+        foreach my $m2f_pair ( @magic_to_fs ) {
+            # @magic_to_fs constant contains pairs of regex (to match libmagic) and filesystem if matched
+            if ( $magic_data->{description} =~ $m2f_pair->[0] ) {
+                $fstype = $m2f_pair->[1];
+                last;
             }
         }
     }
 
-    # lookup failure if we get here
+    # return filesystem type string, or undef if not determined
     defined $fstype and chomp $fstype;
     PiFlash::State::verbose() and say "get_fstype($devpath) = " . ( $fstype // "undef" );
     return $fstype;

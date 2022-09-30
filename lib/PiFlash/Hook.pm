@@ -53,6 +53,8 @@ sub object_params
 }
 
 # use AUTOLOAD to call a named hook as if it were a class method
+## no critic (ClassHierarchies::ProhibitAutoloading)
+# TODO: pre-generate hook functions to remove AUTOLOAD and its perlcritic exception
 our $AUTOLOAD;
 
 sub AUTOLOAD
@@ -77,6 +79,7 @@ sub AUTOLOAD
     }
     return;
 }
+## critic (ClassHierarchies::ProhibitAutoloading)
 
 # add a code reference to a named hook
 sub add

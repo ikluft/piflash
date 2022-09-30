@@ -22,5 +22,5 @@ max_mccabe = 20
 
 [Subroutines::RequireFinalReturn]
 terminal_methods = throw error
-terminal_funcs = error
+terminal_funcs = error croak
 

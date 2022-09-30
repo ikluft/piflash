@@ -14,6 +14,7 @@ package PiFlash::MediaWriter;
 
 use autodie;   # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Carp qw(carp croak);
+use Readonly;
 use Try::Tiny;
 use File::Basename;
 use File::Slurp qw(slurp);
@@ -22,6 +23,10 @@ use PiFlash::State;
 use PiFlash::Command;
 use PiFlash::Inspector;
 use PiFlash::Hook;
+
+# constants
+Readonly::Scalar my $extract_prefix => "extract_";
+Readonly::Scalar my $dd_args => "bs=4M oflag=sync status=progress";
 
 # ABSTRACT: write to Raspberry Pi SD card installation with scriptable customization
 
@@ -182,6 +187,150 @@ sub get_sd_partitions
     return;
 }
 
+# look up extractor function for archive file type
+sub extractor
+{
+    my $type = shift;
+    my $ext_func = __PACKAGE__->can( $extract_prefix.$type );
+    if ( $ext_func ) {
+        return $ext_func;
+    }
+    croak __PACKAGE__." extractor($type) not implemented";
+}
+
+# extractor for .img files
+sub extract_img
+{
+    # flash raw image file to SD
+    PiFlash::Command::cmd(
+        "dd flash",
+        PiFlash::Command::prog("sudo") . " "
+            . PiFlash::Command::prog("dd")
+            . " if=\""
+            . PiFlash::State::input("path")
+            . "\" of=\""
+            . PiFlash::State::output("path")
+            . "\" $dd_args"
+    );
+    return;
+}
+
+# extractor for .zip files, including special handling for Raspberry Pi NOOBS package
+sub extract_zip
+{
+    if ( PiFlash::State::has_input("NOOBS") ) {
+
+        # format SD and copy NOOBS archive to it
+        my $label = random_label();
+        PiFlash::State::output( "label", $label );
+        my $fstype = PiFlash::State::system("primary_fs");
+        if ( $fstype ne "vfat" ) {
+            PiFlash::State->error("NOOBS requires VFAT filesystem, not in this kernel - need to load a module?");
+        }
+        say "formatting $fstype filesystem for Raspberry Pi NOOBS system...";
+        PiFlash::Command::cmd(
+            "write partition table",
+            PiFlash::Command::prog("echo"),
+            "type=c", "|",
+            PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("sfdisk"),
+            PiFlash::State::output("path")
+        );
+        my @partitions = grep { /part\s*$/x } PiFlash::Command::cmd2str(
+            "lsblk - find partitions", PiFlash::Command::prog("lsblk"),
+            "--list",                  PiFlash::State::output("path")
+        );
+        my $partition = "/dev/" . ( substr $partitions[0], 0, index( $partitions[0], ' ' ) );
+        PiFlash::Command::cmd(
+            "format sd card",
+            PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("mkfs.$fstype"),
+            "-n", $label, $partition
+        );
+        my $mntdir = PiFlash::State::system("media_dir") . "/piflash/sdcard";
+        PiFlash::Command::cmd(
+            "reread partition table for NOOBS", PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("blockdev"), "--rereadpt",
+            PiFlash::State::output("path")
+        );
+        PiFlash::Command::cmd(
+            "create mount point",
+            PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("mkdir"),
+            "-p", $mntdir
+        );
+        PiFlash::Command::cmd(
+            "mount SD card",
+            PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("mount"),
+            "-t", $fstype, "LABEL=$label", $mntdir
+        );
+        PiFlash::Command::cmd(
+            "unzip NOOBS contents",
+            PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("unzip"),
+            "-d", $mntdir, PiFlash::State::input("path")
+        );
+        PiFlash::Command::cmd(
+            "unmount SD card",
+            PiFlash::Command::prog("sudo"),
+            PiFlash::Command::prog("umount"), $mntdir
+        );
+    } else {
+
+        # flash zip archive to SD
+        PiFlash::Command::cmd(
+            "unzip/dd flash",
+            PiFlash::Command::prog("unzip")
+                . " -p \""
+                . PiFlash::State::input("path") . "\" \""
+                . PiFlash::State::input("imgfile") . "\" | "
+                . PiFlash::Command::prog("sudo") . " "
+                . PiFlash::Command::prog("dd")
+                . " of=\""
+                . PiFlash::State::output("path")
+                . "\" $dd_args"
+        );
+    }
+    return;
+}
+
+# extractor for .img files
+sub extract_gz
+{
+    # flash gzip-compressed image file to SD
+    PiFlash::Command::cmd(
+        "gunzip/dd flash",
+        PiFlash::Command::prog("gunzip")
+            . " --stdout \""
+            . PiFlash::State::input("path") . "\" | "
+            . PiFlash::Command::prog("sudo") . " "
+            . PiFlash::Command::prog("dd")
+            . " of=\""
+            . PiFlash::State::output("path")
+            . "\" $dd_args"
+    );
+    return;
+}
+
+# extractor for .img files
+sub extract_xz
+{
+    # flash xz-compressed image file to SD
+    PiFlash::Command::cmd(
+        "xz/dd flash",
+        PiFlash::Command::prog("xz")
+            . " --decompress --stdout \""
+            . PiFlash::State::input("path") . "\" | "
+            . PiFlash::Command::prog("sudo") . " "
+            . PiFlash::Command::prog("dd")
+            . " of=\""
+            . PiFlash::State::output("path")
+            . "\" $dd_args"
+    );
+    return;
+}
+
 # flash the output device from the input file
 sub flash_device
 {
@@ -199,125 +348,18 @@ sub flash_device
         say "flashing " . PiFlash::State::input("path") . " -> " . PiFlash::State::output("path");
     }
     say "wait for it to finish - this takes a while, progress not always indicated";
-    my $dd_args = "bs=4M oflag=sync status=progress";
-    if ( PiFlash::State::input("type") eq "img" ) {
-        PiFlash::Command::cmd(
-            "dd flash",
-            PiFlash::Command::prog("sudo") . " "
-                . PiFlash::Command::prog("dd")
-                . " if=\""
-                . PiFlash::State::input("path")
-                . "\" of=\""
-                . PiFlash::State::output("path")
-                . "\" $dd_args"
-        );
-    } elsif ( PiFlash::State::input("type") eq "zip" ) {
-        if ( PiFlash::State::has_input("NOOBS") ) {
 
-            # format SD and copy NOOBS archive to it
-            my $label = random_label();
-            PiFlash::State::output( "label", $label );
-            my $fstype = PiFlash::State::system("primary_fs");
-            if ( $fstype ne "vfat" ) {
-                PiFlash::State->error("NOOBS requires VFAT filesystem, not in this kernel - need to load a module?");
-            }
-            say "formatting $fstype filesystem for Raspberry Pi NOOBS system...";
-            PiFlash::Command::cmd(
-                "write partition table",
-                PiFlash::Command::prog("echo"),
-                "type=c", "|",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("sfdisk"),
-                PiFlash::State::output("path")
-            );
-            my @partitions = grep { /part\s*$/x } PiFlash::Command::cmd2str(
-                "lsblk - find partitions", PiFlash::Command::prog("lsblk"),
-                "--list",                  PiFlash::State::output("path")
-            );
-            my $partition = "/dev/" . ( substr $partitions[0], 0, index( $partitions[0], ' ' ) );
-            PiFlash::Command::cmd(
-                "format sd card",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("mkfs.$fstype"),
-                "-n", $label, $partition
-            );
-            my $mntdir = PiFlash::State::system("media_dir") . "/piflash/sdcard";
-            PiFlash::Command::cmd(
-                "reread partition table for NOOBS", PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("blockdev"), "--rereadpt",
-                PiFlash::State::output("path")
-            );
-            PiFlash::Command::cmd(
-                "create mount point",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("mkdir"),
-                "-p", $mntdir
-            );
-            PiFlash::Command::cmd(
-                "mount SD card",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("mount"),
-                "-t", $fstype, "LABEL=$label", $mntdir
-            );
-            PiFlash::Command::cmd(
-                "unzip NOOBS contents",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("unzip"),
-                "-d", $mntdir, PiFlash::State::input("path")
-            );
-            PiFlash::Command::cmd(
-                "unmount SD card",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("umount"), $mntdir
-            );
-        } else {
+    # look up and run extractor function
+    my $input_type = PiFlash::State::input("type");
+    my $extractor_func = extractor( $input_type ); # throws exception if file type support not implemented
+    $extractor_func->(); # throws exception on failure
 
-            # flash zip archive to SD
-            PiFlash::Command::cmd(
-                "unzip/dd flash",
-                PiFlash::Command::prog("unzip")
-                    . " -p \""
-                    . PiFlash::State::input("path") . "\" \""
-                    . PiFlash::State::input("imgfile") . "\" | "
-                    . PiFlash::Command::prog("sudo") . " "
-                    . PiFlash::Command::prog("dd")
-                    . " of=\""
-                    . PiFlash::State::output("path")
-                    . "\" $dd_args"
-            );
-        }
-    } elsif ( PiFlash::State::input("type") eq "gz" ) {
-
-        # flash gzip-compressed image file to SD
-        PiFlash::Command::cmd(
-            "gunzip/dd flash",
-            PiFlash::Command::prog("gunzip")
-                . " --stdout \""
-                . PiFlash::State::input("path") . "\" | "
-                . PiFlash::Command::prog("sudo") . " "
-                . PiFlash::Command::prog("dd")
-                . " of=\""
-                . PiFlash::State::output("path")
-                . "\" $dd_args"
-        );
-    } elsif ( PiFlash::State::input("type") eq "xz" ) {
-
-        # flash xz-compressed image file to SD
-        PiFlash::Command::cmd(
-            "xz/dd flash",
-            PiFlash::Command::prog("xz")
-                . " --decompress --stdout \""
-                . PiFlash::State::input("path") . "\" | "
-                . PiFlash::Command::prog("sudo") . " "
-                . PiFlash::Command::prog("dd")
-                . " of=\""
-                . PiFlash::State::output("path")
-                . "\" $dd_args"
-        );
-    }
+    # sync IO buffers after write
     say "- synchronizing buffers";
     PiFlash::Command::cmd( "sync", PiFlash::Command::prog("sync") );
-    reread_pt("post-sync");    # re-read partition table, use multiple tries if necessary
+
+    # re-read partition table, use multiple tries if necessary
+    reread_pt("post-sync");
     get_sd_partitions();
     my @partitions = PiFlash::State::output("partitions");
 

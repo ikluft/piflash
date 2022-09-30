@@ -85,94 +85,91 @@ sub cmd_log
     return;
 }
 
-# fork/exec wrapper to run child processes and collect output/error results
-# used as lower level call by cmd() and cmd2str()
-# adds more capability than qx()/backtick/system - wrapper lets us send input & capture output/error data
-sub fork_exec
+# return new structure of child I/O file descriptors
+sub init_child_io
 {
-    my @args = @_;
-
-    # input for child process may be provided as reference to array - use it and remove it from parameters
-    my @input;
-    if ( ref $args[0] eq "ARRAY" ) {
-        my $input_ref = shift @args;
-        @input = @$input_ref;
-    }
-    if ( PiFlash::State::verbose() ) {
-        say STDERR "fork_exec running: " . join( " ", @args );
-    }
-    my $cmdname = shift @args;
-
-    # open pipes for child process stdin, stdout, stderr
-    my (
-        $child_in_reader,  $child_in_writer,  $child_out_reader,
-        $child_out_writer, $child_err_reader, $child_err_writer
-    );
-    pipe $child_in_reader, $child_in_writer
+    my $cmdname = shift;
+    my $childio = {
+        cmdname => $cmdname,
+        in => { read => undef, write => undef},
+        out => { read => undef, write => undef},
+        err => { read => undef, write => undef}
+    };
+    pipe $childio->{in}{read}, $childio->{in}{write}
         or PiFlash::State->error("fork_exec($cmdname): failed to open child process input pipe: $!");
-    pipe $child_out_reader, $child_out_writer
+    pipe $childio->{out}{read}, $childio->{out}{write}
         or PiFlash::State->error("fork_exec($cmdname): failed to open child process output pipe: $!");
-    pipe $child_err_reader, $child_err_writer
+    pipe $childio->{err}{read}, $childio->{err}{write}
         or PiFlash::State->error("fork_exec($cmdname): failed to open child process error pipe: $!");
+    return $childio;
+}
 
-    # fork the child process
-    my $pid = fork_child(
-        sub {
-            # in child process
+# start child process
+sub child_proc
+{
+    my ( $childio, @args ) = @_;
 
-            # close our copy of parent's end of pipes to avoid deadlock - it must now be only one with them open
-            close $child_in_writer
-                or croak "fork_exec($cmdname): child failed to close parent process input writer pipe: $!";
-            close $child_out_reader
-                or croak "fork_exec($cmdname): child failed to close parent process output reader pipe: $!";
-            close $child_err_reader
-                or croak "fork_exec($cmdname): child failed to close parent process error reader pipe: $!";
+    # in child process
 
-            # dup file descriptors into child's standard in=0/out=1/err=2 positions
-            POSIX::dup2( fileno $child_in_reader, 0 )
-                or croak "fork_exec($cmdname): child failed to reopen stdin from pipe: $!\n";
-            POSIX::dup2( fileno $child_out_writer, 1 )
-                or croak "fork_exec($cmdname): child failed to reopen stdout to pipe: $!\n";
-            POSIX::dup2( fileno $child_err_writer, 2 )
-                or croak "fork_exec($cmdname): child failed to reopen stderr to pipe: $!\n";
+    # close our copy of parent's end of pipes to avoid deadlock - it must now be only one with them open
+    my $cmdname = $childio->{cmdname};
+    close $childio->{in}{write}
+        or croak "fork_exec($cmdname): child failed to close parent process input writer pipe: $!";
+    close $childio->{out}{read}
+        or croak "fork_exec($cmdname): child failed to close parent process output reader pipe: $!";
+    close $childio->{err}{read}
+        or croak "fork_exec($cmdname): child failed to close parent process error reader pipe: $!";
 
-            # close the file descriptors that were just consumed by dup2
-            close $child_in_reader
-                or croak "fork_exec($cmdname): child failed to close child process input reader pipe: $!";
-            close $child_out_writer
-                or croak "fork_exec($cmdname): child failed to close child process output writer pipe: $!";
-            close $child_err_writer
-                or croak "fork_exec($cmdname): child failed to close child process error writer pipe: $!";
+    # dup file descriptors into child's standard in=0/out=1/err=2 positions
+    POSIX::dup2( fileno $childio->{in}{read}, 0 )
+        or croak "fork_exec($cmdname): child failed to reopen stdin from pipe: $!\n";
+    POSIX::dup2( fileno $childio->{out}{write}, 1 )
+        or croak "fork_exec($cmdname): child failed to reopen stdout to pipe: $!\n";
+    POSIX::dup2( fileno $childio->{err}{write}, 2 )
+        or croak "fork_exec($cmdname): child failed to reopen stderr to pipe: $!\n";
 
-            # execute the command
-            exec @args
-                or croak "fork_exec($cmdname): failed to execute command - returned $?";
-        }
-    );
+    # close the file descriptors that were just consumed by dup2
+    close $childio->{in}{read}
+        or croak "fork_exec($cmdname): child failed to close child process input reader pipe: $!";
+    close $childio->{out}{write}
+        or croak "fork_exec($cmdname): child failed to close child process output writer pipe: $!";
+    close $childio->{err}{write}
+        or croak "fork_exec($cmdname): child failed to close child process error writer pipe: $!";
+
+    # execute the command
+    exec @args
+        or croak "fork_exec($cmdname): failed to execute command - returned $?";
+}
+
+# monitor child process from parent
+sub monitor_child
+{
+    my ( $childio, @args ) = @_;
 
     # in parent process
 
     # close our copy of child's end of pipes to avoid deadlock - it must now be only one with them open
-    close $child_in_reader
+    my $cmdname = $childio->{cmdname};
+    close $childio->{in}{read}
         or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process input reader pipe: $!");
-    close $child_out_writer
+    close $childio->{out}{write}
         or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process output writer pipe: $!");
-    close $child_err_writer
+    close $childio->{err}{write}
         or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process error writer pipe: $!");
 
     # write to child's input if any content was provided
-    if (@input) {
-
+    if (exists $childio->{in_data}) {
         # blocks until input is accepted - this interface reqiuires child commands using input take it before output
         # because parent process is not multithreaded
-        if ( !print $child_in_writer join( "\n", @input ) . "\n" ) {
+        my $writefd = $childio->{in}{write};
+        if ( not say $writefd join( "\n", @{$childio->{in_data}} )) {
             PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
         }
     }
-    close $child_in_writer;
+    close $childio->{in}{write};
 
     # use IO::Poll to collect child output and error separately
-    my @fd   = ( $child_out_reader, $child_err_reader );    # file descriptors for out(0) and err(1)
+    my @fd   = ( $childio->{out}{read}, $childio->{err}{read} );    # file descriptors for out(0) and err(1)
     my @text = ( undef, undef );                            # received text for out(0) and err(1)
     my @done = ( 0,     0 );                                # done flags for out(0) and err(1)
     my $poll = IO::Poll->new();
@@ -193,9 +190,7 @@ sub fork_exec
                     # we do this for hangup because Linux kernel doesn't report input when a hangup occurs
                     my $buffer;
                     while ( read( $fd[$i], $buffer, 1024 ) != 0 ) {
-                        if ( !defined $text[$i] ) {
-                            $text[$i] = "";
-                        }
+                        ( defined $text[$i] ) or $text[$i] = "";
                         $text[$i] .= $buffer;
                     }
                     if ( $events && (POLLHUP) ) {
@@ -211,39 +206,77 @@ sub fork_exec
     }
 
     # reap the child process status
+    my $pid = $childio->{pid};
     waitpid( $pid, 0 );
+
+    # return child status
+    my $result = {};
+    $result->{return_code} = $?;
+    $result->{text} = \@text;
+    return $result;
+}
+
+# fork/exec wrapper to run child processes and collect output/error results
+# used as lower level call by cmd() and cmd2str()
+# adds more capability than qx()/backtick/system - wrapper lets us send input & capture output/error data
+sub fork_exec
+{
+    my @args = @_;
+
+    # input for child process may be provided as reference to array - use it and remove it from parameters
+    my $input_ref;
+    if ( ref $args[0] eq "ARRAY" ) {
+        $input_ref = shift @args;
+    }
+    if ( PiFlash::State::verbose() ) {
+        say STDERR "fork_exec running: " . join( " ", @args );
+    }
+    my $cmdname = shift @args;
+
+    # open pipes for child process stdin, stdout, stderr
+    my $childio = init_child_io( $cmdname );
+    if (defined $input_ref) {
+        $childio->{in_data} = $input_ref;
+    }
+
+    # fork the child process
+    $childio->{pid} = fork_child( sub { child_proc( $childio, @args ) } );
+
+    # in parent process
+    my $result = monitor_child( $childio, @args );
 
     # record all command return codes, stdout & stderr in a new top-level store in State
     # it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
     cmd_log(
         cmdname    => $cmdname,
         cmdline    => [@args],
-        returncode => $? >> 8,
+        returncode => $result->{return_code} >> 8,
         (
-              ( $? & 127 )
-            ? ( signal => sprintf "signal %d%s", ( $? & 127 ), ( ( $? & 128 ) ? " with coredump" : "" ) )
-            : ()
+              ( $result->{return_code} & 127 )
+                  ?  ( signal => sprintf "signal %d%s", ( $result->{return_code} & 127 ),
+                      ( ( $result->{return_code} & 128 ) ? " with coredump" : "" ) )
+                  : ()
         ),
-        out => $text[0],
-        err => $text[1]
+        out => $result->{text}[0],
+        err => $result->{text}[1]
     );
 
     # catch errors
-    if ( $? == -1 ) {
+    if ( $result->{return_code} == -1 ) {
         PiFlash::State->error("failed to execute $cmdname command: $!");
-    } elsif ( $? & 127 ) {
+    } elsif ( $result->{return_code} & 127 ) {
         PiFlash::State->error(
             sprintf "%s command died with signal %d, %s coredump",
             $cmdname,
-            ( $? & 127 ),
-            ( $? & 128 ) ? 'with' : 'without'
+            ( $result->{return_code} & 127 ),
+            ( $result->{return_code} & 128 ) ? 'with' : 'without'
         );
-    } elsif ( $? != 0 ) {
-        PiFlash::State->error( sprintf "%s command exited with value %d", $cmdname, $? >> 8 );
+    } elsif ( $result->{return_code} != 0 ) {
+        PiFlash::State->error( sprintf "%s command exited with value %d", $cmdname, $result->{return_code} >> 8 );
     }
 
     # return output/error
-    return @text;
+    return @{$result->{text}};
 }
 
 # run a command

@@ -54,8 +54,9 @@ sub plugin_tests
     my $mode     = shift;
 
     # clear cli_opt/plugin/config in PiFlash::State
+    my $pif_state = PiFlash::State->instance();
     foreach my $category (@top_level_params) {
-        $PiFlash::State::state->{$category} = {};
+        $pif_state->{$category} = {};
     }
 
     # read the config file
@@ -112,7 +113,7 @@ sub plugin_tests
                 ;    # always missing if module is missing
         }
     }
-    $debug_mode and print STDERR "debug plugin_tests: " . Dumper($PiFlash::State::state);
+    $debug_mode and print STDERR "debug plugin_tests: " . Dumper($pif_state);
 }
 
 # read list of test input files from subdirectory with same basename as this script

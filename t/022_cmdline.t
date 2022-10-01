@@ -96,7 +96,8 @@ sub cmdline_tests
     my $tests        = shift;
 
     # set up for test - clear state, set CLI params
-    undef $PiFlash::State::state;
+    my $pif_state = PiFlash::State->instance();
+    %$pif_state = (); # reset contents so init() will see it as empty and start over
     PiFlash::State->init(@top_level_params);
 
     # run command line test case
@@ -109,7 +110,7 @@ sub cmdline_tests
             print STDERR "debug cmdline_tests $test_set_str values " . Dumper( \%values );
         }
         print STDERR "debug cmdline_tests $test_set_str: cmdline = " . join( " ", @$cmdline ) . "\n";
-        print STDERR "debug cmdline_tests $test_set_str: " . Dumper($PiFlash::State::state);
+        print STDERR "debug cmdline_tests $test_set_str: " . Dumper($pif_state);
     }
 
     # use command line results for tests

@@ -314,7 +314,7 @@ sub main
         return 1;
     } else {
         if ( PiFlash::State::verbose() or PiFlash::State::logging() ) {
-            say "Program state dump...\n" . PiFlash::State::odump( $PiFlash::State::state, 0 );
+            say "Program state dump...\n" . PiFlash::State::odump( PiFlash::State::get_state(), 0 );
         }
     }
 

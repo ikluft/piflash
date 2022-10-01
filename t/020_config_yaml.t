@@ -25,14 +25,15 @@ sub yaml_tests
     my $flag_str = join " ", sort keys %$flags;
 
     # clear config in PiFlash::State
-    $PiFlash::State::state->{config} = {};
+    my $pif_state = PiFlash::State->instance();
+    $pif_state->{config} = {};
 
     # read the config file
     eval { PiFlash::State::read_config($filepath); };
 
     # run tests
     my $config = PiFlash::State::config();
-    $debug_mode and warn "debug: config:\n" . Dumper($PiFlash::State::state);
+    $debug_mode and warn "debug: config:\n" . Dumper($pif_state);
     if ( !exists $flags->{bad} ) {
         is( "$@", '', "$filepath 1 ($flag_str): no exceptions" );
         isnt( scalar keys %$config, 0, "$filepath 2 ($flag_str): non-empty config" );

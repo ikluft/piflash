@@ -15,6 +15,9 @@ PiFlash::State->init(@top_level_params);
 my @cli_params = ( "verbose", "logging" );
 plan tests => 1 + ( scalar @top_level_params ) * 10 + ( scalar @cli_params ) * 3;
 
+# get ref to PiFlash::State singleton instance
+my $pif_state = PiFlash::State->instance();
+
 # make sure we're getting enough data from PiFlash::state_categories()
 ok( ( scalar @top_level_params ) >= 8, "PiFlash::state_categories provides at least 8 entries" );
 
@@ -26,8 +29,8 @@ foreach my $tlp_name (@top_level_params) {
     can_ok( "PiFlash::State", "has_" . $tlp_name );
 
     # top-level hash existence tests
-    ok( exists $PiFlash::State::state->{$tlp_name}, "state{$tlp_name} exists" );
-    is( ref $PiFlash::State::state->{$tlp_name}, "HASH", "state{$tlp_name} is a hash ref" );
+    ok( exists $pif_state->{$tlp_name}, "state{$tlp_name} exists" );
+    is( ref $pif_state->{$tlp_name}, "HASH", "state{$tlp_name} is a hash ref" );
     my $hashref = $PiFlash::State::{$tlp_name}();
     is( ref $hashref,          "HASH", "HASH ref for $tlp_name" );
     is( scalar keys %$hashref, 0,      "empty hash for $tlp_name by default" );

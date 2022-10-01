@@ -17,6 +17,7 @@ use 5.01400;    # require 2011 or newer version of Perl
 # this is a low-level package - it stores state data but at this level has no knowledge of what is being stored in it
 package PiFlash::State;
 
+use base 'Class::Singleton';
 use autodie;
 use YAML::XS;    # RPM: perl-YAML-LibYAML, DEB: libyaml-libyaml-perl
 use Carp qw(croak);
@@ -86,33 +87,39 @@ Patches and enhancements may be submitted via a pull request at L<https://github
 
 =cut
 
-# initialize state as empty
-## no critic (ProhibitPackageVars)
-our $state;
-## use critic
-
 # initialize class' singleton object from parameters
 # class method
 sub init
 {
-    ## no critic (ProhibitPackageVars)
-    my $class = shift;
-    ( defined $PiFlash::State::state ) and return;    # avoid damaging data if called again
+    my ( $class, @args ) = @_;
+    defined $class
+        or croak "init: class parameter not received";
+    if ( $class ne __PACKAGE__ ) {
+        # Arguably this should have been a class function and not a method. Since it's a method and user code
+        # may call it, for compatibility that won't be changed now. Enforce use only for this class.
+        croak "init() method serves only ".__PACKAGE__;
+    }
+    if ( __PACKAGE__->has_instance()) {
+        my $instance = __PACKAGE__->instance();
+        if ( ( scalar keys %$instance ) > 0 ) {
+            return; # avoid overwriting existing data if called again
+        }
+    }
 
     # global security settings for YAML::XS parser
-    # since PiFlash can run parts as root, we don't want any external code to be run without user authorization
+    # since PiFlash can run parts as root, we must not allow external code to be run without user authorization
+    ## no critic (Variables::ProhibitPackageVars)
     $YAML::XS::LoadBlessed = 0;
     $YAML::XS::UseCode     = 0;
     $YAML::XS::LoadCode    = 0;
+    ## critic (Variables::ProhibitPackageVars)
 
     # instantiate the state object as a singleton (only one instance in the system)
-    $PiFlash::State::state = {};
-    bless $PiFlash::State::state, $class;
-    my $self = $PiFlash::State::state;
+    my $self = __PACKAGE__->instance();
 
     # loop through parameters adding each name as a top-level state hash and accessor functions
-    while ( scalar @_ > 0 ) {
-        my $top_level_param = shift;
+    while ( scalar @args > 0 ) {
+        my $top_level_param = shift @args;
 
         # create top-level hash named for the parameter
         $self->{$top_level_param} = {};
@@ -123,13 +130,17 @@ sub init
             no strict qw(refs);
 
             # accessor fieldname()
-            if ( !$class->can($top_level_param) ) {
-                *{ $class . "::" . $top_level_param } = sub { return $class->accessor( $top_level_param, @_ ); };
+            if ( not __PACKAGE__->can($top_level_param) ) {
+                *{ __PACKAGE__ . "::" . $top_level_param } = sub {
+                    return __PACKAGE__->accessor( $top_level_param, @_ );
+                };
             }
 
             # accessor has_fieldname()
-            if ( !$class->can( "has_" . $top_level_param ) ) {
-                *{ $class . "::has_" . $top_level_param } = sub { return $class->has( $top_level_param, @_ ); };
+            if ( not __PACKAGE__->can( "has_" . $top_level_param ) ) {
+                *{ __PACKAGE__ . "::has_" . $top_level_param } = sub {
+                    return __PACKAGE__->has( $top_level_param, @_ );
+                };
             }
         }
     }
@@ -137,49 +148,48 @@ sub init
 }
 
 # get top level state
-sub state
+# This takes no parameters. It can be called as a class function or method.
+sub get_state
 {
-    my ( $package, $filename, $line ) = caller;
-    ( $package eq "PiFlash::State" or $package->isa("PiFlash::State") )
-        or croak "internal-use-only function called by $package at $filename line $line";
-    return $PiFlash::State::state;
+    my ( $caller_package, $filename, $line ) = caller;
+    if ( $caller_package ne __PACKAGE__ ) {
+        croak __PACKAGE__." internal-use-only method called by $caller_package at $filename line $line";
+    }
+    return __PACKAGE__->instance();
 }
 
 # state value get/set accessor
 # class method
 sub accessor
 {
-    my $class           = shift;
-    my $top_level_param = shift;
-    my $name            = shift;
-    my $value           = shift;
-    my $self            = $class->state();
+    my ( $class, $top_level_param, $name, $value ) = @_;
+    my $self            = $class->get_state();
+
     if ( defined $value ) {
 
         # got name & value - set the new value for name
         $self->{$top_level_param}{$name} = $value;
-        return;
-    } elsif ( defined $name ) {
+        return $value;
+    }
+
+    if ( defined $name ) {
 
         # got only name - return the value/ref of name
         return ( exists $self->{$top_level_param}{$name} )
             ? $self->{$top_level_param}{$name}
             : undef;
-    } else {
-
-        # no name or value - return ref to top-level hash (top_level_parameter from init() context)
-        return $self->{$top_level_param};
     }
+
+    # no name or value - return ref to top-level hash (top_level_parameter from init() context)
+    return $self->{$top_level_param};
 }
 
 # check if a top level state has a key
 # class method
 sub has
 {
-    my $class           = shift;
-    my $self            = $class->state();
-    my $top_level_param = shift;
-    my $name            = shift;
+    my ( $class, $top_level_param, $name ) = @_;
+    my $self            = $class->get_state();
     return ( ( exists $self->{$top_level_param} ) and ( exists $self->{$top_level_param}{$name} ) );
 }
 
@@ -201,12 +211,12 @@ sub logging
 sub odump
 {
     my ( $obj, $level ) = @_;
-    if ( !defined $obj ) {
+    if ( not defined $obj ) {
 
         # bail out for undefined value
         return "";
     }
-    if ( !ref $obj ) {
+    if ( not ref $obj ) {
 
         # process plain scalar
         return ( "    " x $level ) . "[value]" . $obj . "\n";
@@ -217,7 +227,7 @@ sub odump
         return ( "    " x $level ) . ( $$obj // "undef" ) . "\n";
     }
     if (   ref $obj eq "HASH"
-        or ref $obj eq "PiFlash::State"
+        or ref $obj eq __PACKAGE__
         or ( ref $obj =~ /^PiFlash::/x and $obj->isa("PiFlash::Object") ) )
     {
         # process hash reference
@@ -260,11 +270,9 @@ sub odump
 # class method
 sub error
 {
-    ## no critic (ProhibitPackageVars)
-    my $class   = shift;
-    my $message = shift;
+    my ( $class, $message ) = @_;
     croak "error: " . $message
-        . ( ( verbose() or logging() ) ? "\nProgram state dump...\n" . odump( $PiFlash::State::state, 0 ) : "" );
+        . ( ( verbose() or logging() ) ? "\nProgram state dump...\n" . odump( __PACKAGE__->get_state(), 0 ) : "" );
 }
 
 # read YAML configuration file
@@ -278,7 +286,7 @@ sub read_config
         # capture as many YAML documents as can be parsed from the configuration file
         my @yaml_docs = eval { YAML::XS::LoadFile($filepath); };
         if ($@) {
-            PiFlash::State->error("PiFlash::State::read_config error reading $filepath: $@");
+            __PACKAGE__->error(__PACKAGE__."::read_config error reading $filepath: $@");
         }
 
         # save the first YAML document as the configuration
@@ -286,7 +294,8 @@ sub read_config
         if ( ref $yaml_config eq "HASH" ) {
 
             # if it's a hash, then use all its mappings in PiFlash::State::config
-            $PiFlash::State::state->{config} = $yaml_config;
+            my $pif_state = __PACKAGE__->get_state();
+            $pif_state->{config} = $yaml_config;
         } else {
 
             # otherwise save the reference in a config entry called config

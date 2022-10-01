@@ -493,6 +493,6 @@ if (@missing) {
     }
 }
 
-$debug_mode and warn PiFlash::State::odump( $PiFlash::State::state, 0 );
+$debug_mode and warn PiFlash::State::odump( PiFlash::State::get_state(), 0 );
 
 1;

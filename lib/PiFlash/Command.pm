@@ -144,7 +144,7 @@ sub child_proc
 # monitor child process from parent
 sub monitor_child
 {
-    my ( $childio, @args ) = @_;
+    my ( $childio ) = @_;
 
     # in parent process
 
@@ -243,7 +243,7 @@ sub fork_exec
     $childio->{pid} = fork_child( sub { child_proc( $childio, @args ) } );
 
     # in parent process
-    my $result = monitor_child( $childio, @args );
+    my $result = monitor_child( $childio );
 
     # record all command return codes, stdout & stderr in a new top-level store in State
     # it's overhead but useful for problem-reporting, troubleshooting, debugging and testing

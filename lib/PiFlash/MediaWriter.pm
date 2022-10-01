@@ -366,9 +366,6 @@ sub flash_device
     # check if there are any partitions before partition-dependent processing
     # protects from scenario (such as RISCOS) where whole-device filesystem has no partition table
     if (@partitions) {
-        my $sd_name     = basename( PiFlash::State::output("path") );
-        my $num_boot    = PiFlash::State::output("num_boot");
-        my $part_boot   = PiFlash::State::output("part_boot");
         my $num_root    = PiFlash::State::output("num_root");
         my $part_root   = PiFlash::State::output("part_root");
         my $fstype_root = PiFlash::State::output("fstype_root");

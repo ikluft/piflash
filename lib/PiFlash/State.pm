@@ -95,14 +95,15 @@ sub init
     defined $class
         or croak "init: class parameter not received";
     if ( $class ne __PACKAGE__ ) {
+
         # Arguably this should have been a class function and not a method. Since it's a method and user code
         # may call it, for compatibility that won't be changed now. Enforce use only for this class.
-        croak "init() method serves only ".__PACKAGE__;
+        croak "init() method serves only " . __PACKAGE__;
     }
-    if ( __PACKAGE__->has_instance()) {
+    if ( __PACKAGE__->has_instance() ) {
         my $instance = __PACKAGE__->instance();
         if ( ( scalar keys %$instance ) > 0 ) {
-            return; # avoid overwriting existing data if called again
+            return;    # avoid overwriting existing data if called again
         }
     }
 
@@ -153,7 +154,7 @@ sub get_state
 {
     my ( $caller_package, $filename, $line ) = caller;
     if ( $caller_package ne __PACKAGE__ ) {
-        croak __PACKAGE__." internal-use-only method called by $caller_package at $filename line $line";
+        croak __PACKAGE__ . " internal-use-only method called by $caller_package at $filename line $line";
     }
     return __PACKAGE__->instance();
 }
@@ -163,7 +164,7 @@ sub get_state
 sub accessor
 {
     my ( $class, $top_level_param, $name, $value ) = @_;
-    my $self            = $class->get_state();
+    my $self = $class->get_state();
 
     if ( defined $value ) {
 
@@ -189,7 +190,7 @@ sub accessor
 sub has
 {
     my ( $class, $top_level_param, $name ) = @_;
-    my $self            = $class->get_state();
+    my $self = $class->get_state();
     return ( ( exists $self->{$top_level_param} ) and ( exists $self->{$top_level_param}{$name} ) );
 }
 
@@ -286,7 +287,7 @@ sub read_config
         # capture as many YAML documents as can be parsed from the configuration file
         my @yaml_docs = eval { YAML::XS::LoadFile($filepath); };
         if ($@) {
-            __PACKAGE__->error(__PACKAGE__."::read_config error reading $filepath: $@");
+            __PACKAGE__->error( __PACKAGE__ . "::read_config error reading $filepath: $@" );
         }
 
         # save the first YAML document as the configuration

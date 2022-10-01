@@ -91,9 +91,9 @@ sub init_child_io
     my $cmdname = shift;
     my $childio = {
         cmdname => $cmdname,
-        in => { read => undef, write => undef},
-        out => { read => undef, write => undef},
-        err => { read => undef, write => undef}
+        in      => { read => undef, write => undef },
+        out     => { read => undef, write => undef },
+        err     => { read => undef, write => undef }
     };
     pipe $childio->{in}{read}, $childio->{in}{write}
         or PiFlash::State->error("fork_exec($cmdname): failed to open child process input pipe: $!");
@@ -144,7 +144,7 @@ sub child_proc
 # monitor child process from parent
 sub monitor_child
 {
-    my ( $childio ) = @_;
+    my ($childio) = @_;
 
     # in parent process
 
@@ -158,11 +158,12 @@ sub monitor_child
         or PiFlash::State->error("fork_exec($cmdname): parent failed to close child process error writer pipe: $!");
 
     # write to child's input if any content was provided
-    if (exists $childio->{in_data}) {
+    if ( exists $childio->{in_data} ) {
+
         # blocks until input is accepted - this interface reqiuires child commands using input take it before output
         # because parent process is not multithreaded
         my $writefd = $childio->{in}{write};
-        if ( not say $writefd join( "\n", @{$childio->{in_data}} )) {
+        if ( not say $writefd join( "\n", @{ $childio->{in_data} } ) ) {
             PiFlash::State->error("fork_exec($cmdname): failed to write child process input: $!");
         }
     }
@@ -170,8 +171,8 @@ sub monitor_child
 
     # use IO::Poll to collect child output and error separately
     my @fd   = ( $childio->{out}{read}, $childio->{err}{read} );    # file descriptors for out(0) and err(1)
-    my @text = ( undef, undef );                            # received text for out(0) and err(1)
-    my @done = ( 0,     0 );                                # done flags for out(0) and err(1)
+    my @text = ( undef, undef );                                    # received text for out(0) and err(1)
+    my @done = ( 0,     0 );                                        # done flags for out(0) and err(1)
     my $poll = IO::Poll->new();
     $poll->mask( $fd[0] => POLLIN );
     $poll->mask( $fd[1] => POLLIN );
@@ -212,7 +213,7 @@ sub monitor_child
     # return child status
     my $result = {};
     $result->{return_code} = $?;
-    $result->{text} = \@text;
+    $result->{text}        = \@text;
     return $result;
 }
 
@@ -234,8 +235,8 @@ sub fork_exec
     my $cmdname = shift @args;
 
     # open pipes for child process stdin, stdout, stderr
-    my $childio = init_child_io( $cmdname );
-    if (defined $input_ref) {
+    my $childio = init_child_io($cmdname);
+    if ( defined $input_ref ) {
         $childio->{in_data} = $input_ref;
     }
 
@@ -243,7 +244,7 @@ sub fork_exec
     $childio->{pid} = fork_child( sub { child_proc( $childio, @args ) } );
 
     # in parent process
-    my $result = monitor_child( $childio );
+    my $result = monitor_child($childio);
 
     # record all command return codes, stdout & stderr in a new top-level store in State
     # it's overhead but useful for problem-reporting, troubleshooting, debugging and testing
@@ -252,10 +253,13 @@ sub fork_exec
         cmdline    => [@args],
         returncode => $result->{return_code} >> 8,
         (
-              ( $result->{return_code} & 127 )
-                  ?  ( signal => sprintf "signal %d%s", ( $result->{return_code} & 127 ),
-                      ( ( $result->{return_code} & 128 ) ? " with coredump" : "" ) )
-                  : ()
+            ( $result->{return_code} & 127 )
+            ? (
+                signal => sprintf "signal %d%s",
+                ( $result->{return_code} & 127 ),
+                ( ( $result->{return_code} & 128 ) ? " with coredump" : "" )
+                )
+            : ()
         ),
         out => $result->{text}[0],
         err => $result->{text}[1]
@@ -276,7 +280,7 @@ sub fork_exec
     }
 
     # return output/error
-    return @{$result->{text}};
+    return @{ $result->{text} };
 }
 
 # run a command

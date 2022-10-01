@@ -61,20 +61,20 @@ Readonly::Scalar my $process_func_prefix => "process_file_";
 
 # list of libmagic file strings corellated to file type strings as pairs
 Readonly::Array my @magic_to_type => (
-    [ qr(^Zip archive data)ix, "zip" ],
+    [ qr(^Zip archive data)ix,     "zip" ],
     [ qr(^gzip compressed data)ix, "gz" ],
-    [ qr(^XZ compressed data)ix, "xz" ],
+    [ qr(^XZ compressed data)ix,   "xz" ],
     [ qr(^DOS\/MBR boot sector)ix, "img" ],
 );
 
 # list of libmagic file strings corellated to filesystems as pairs
 # a code of 1 means use $1 from regex match, and convert it to lower case
 Readonly::Array my @magic_to_fs => (
-    [ qr(^Linux rev \d+.\d+ (ext[234]) filesystem data,)ix, 1 ],
-    [ qr(^(\w+) Filesystem)ix, 1 ],
-    [ qr(\s+(\w+)\sfilesystem)ix, 1 ],
+    [ qr(^Linux rev \d+.\d+ (ext[234]) filesystem data,)ix,                 1 ],
+    [ qr(^(\w+) Filesystem)ix,                                              1 ],
+    [ qr(\s+(\w+)\sfilesystem)ix,                                           1 ],
     [ qr(^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),)ix, "vfat" ],
-    [ qr(^Linux\/\w+ swap file)ix, "swap" ],
+    [ qr(^Linux\/\w+ swap file)ix,                                          "swap" ],
 );
 
 # block device parameters to collect via lsblk
@@ -271,7 +271,8 @@ sub collect_file_info
 
     # use libmagic/file to determine file type from contents
     say "input file is a " . $input->{info}{description};
-    foreach my $m2t_pair ( @magic_to_type ) {
+    foreach my $m2t_pair (@magic_to_type) {
+
         # @magic_to_type constant contains pairs of regex (to match libmagic) and file type string if matched
         if ( $input->{info}{description} =~ $m2t_pair->[0] ) {
             $input->{type} = $m2t_pair->[1];
@@ -287,7 +288,8 @@ sub collect_file_info
 
     # find embedded boot image in archived/compressed files of various formats
     # call the function named by "process_file_" and file type, if it exists
-    if (my $process_func = __PACKAGE__->can( $process_func_prefix.$input->{type} )) {
+    if ( my $process_func = __PACKAGE__->can( $process_func_prefix . $input->{type} ) ) {
+
         # call function to process the file type
         $process_func->();
     }
@@ -525,7 +527,7 @@ sub get_fstype
     if ( ( not defined $fstype ) or $fstype =~ /^\s*$/x ) {
         my $magic = File::LibMagic->new();
         $fstype = undef;
-        $magic->{flags} |= File::LibMagic::MAGIC_DEVICES; # undocumented trick for equivalent of "file -s" on device
+        $magic->{flags} |= File::LibMagic::MAGIC_DEVICES;    # undocumented trick for equivalent of "file -s" on device
         my $magic_data = $magic->info_from_filename($devpath);
         if ( PiFlash::State::verbose() ) {
             for my $key ( keys %$magic_data ) {
@@ -534,7 +536,8 @@ sub get_fstype
         }
 
         # use @magic_to_fs table to check regexes against libmagic result
-        foreach my $m2f_pair ( @magic_to_fs ) {
+        foreach my $m2f_pair (@magic_to_fs) {
+
             # @magic_to_fs constant contains pairs of regex (to match libmagic) and filesystem if matched
             if ( $magic_data->{description} =~ $m2f_pair->[0] ) {
                 $fstype = $m2f_pair->[1];

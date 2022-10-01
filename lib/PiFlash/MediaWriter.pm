@@ -26,7 +26,7 @@ use PiFlash::Hook;
 
 # constants
 Readonly::Scalar my $extract_prefix => "extract_";
-Readonly::Scalar my $dd_args => "bs=4M oflag=sync status=progress";
+Readonly::Scalar my $dd_args        => "bs=4M oflag=sync status=progress";
 
 # ABSTRACT: write to Raspberry Pi SD card installation with scriptable customization
 
@@ -190,12 +190,12 @@ sub get_sd_partitions
 # look up extractor function for archive file type
 sub extractor
 {
-    my $type = shift;
-    my $ext_func = __PACKAGE__->can( $extract_prefix.$type );
-    if ( $ext_func ) {
+    my $type     = shift;
+    my $ext_func = __PACKAGE__->can( $extract_prefix . $type );
+    if ($ext_func) {
         return $ext_func;
     }
-    croak __PACKAGE__." extractor($type) not implemented";
+    croak __PACKAGE__ . " extractor($type) not implemented";
 }
 
 # extractor for .img files
@@ -237,8 +237,9 @@ sub extract_zip
             PiFlash::State::output("path")
         );
         my @partitions = grep { /part\s*$/x } PiFlash::Command::cmd2str(
-            "lsblk - find partitions", PiFlash::Command::prog("lsblk"),
-            "--list",                  PiFlash::State::output("path")
+            "lsblk - find partitions",
+            PiFlash::Command::prog("lsblk"),
+            "--list", PiFlash::State::output("path")
         );
         my $partition = "/dev/" . ( substr $partitions[0], 0, index( $partitions[0], ' ' ) );
         PiFlash::Command::cmd(
@@ -350,9 +351,9 @@ sub flash_device
     say "wait for it to finish - this takes a while, progress not always indicated";
 
     # look up and run extractor function
-    my $input_type = PiFlash::State::input("type");
-    my $extractor_func = extractor( $input_type ); # throws exception if file type support not implemented
-    $extractor_func->(); # throws exception on failure
+    my $input_type     = PiFlash::State::input("type");
+    my $extractor_func = extractor($input_type);          # throws exception if file type support not implemented
+    $extractor_func->();                                  # throws exception on failure
 
     # sync IO buffers after write
     say "- synchronizing buffers";

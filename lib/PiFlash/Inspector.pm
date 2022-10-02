@@ -11,6 +11,7 @@ use utf8;
 
 package PiFlash::Inspector;
 
+use feature qw(say);
 use autodie;   # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Try::Tiny;
 use Readonly;

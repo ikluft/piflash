@@ -11,9 +11,10 @@ use utf8;
 
 package PiFlash::Hook;
 
-use Carp qw(confess);
+use feature qw(say);
 use autodie;   # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use parent 'PiFlash::Object';
+use Carp qw(confess);
 use PiFlash::State;
 
 # ABSTRACT: named dispatch/hook library for PiFlash

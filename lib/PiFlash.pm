@@ -12,6 +12,7 @@ use utf8;
 
 package PiFlash;
 
+use feature qw(say);
 use autodie;   # report errors instead of silently continuing ("die" actions are used as exceptions - caught & reported)
 use Getopt::Long qw(GetOptionsFromArray);    # included with perl
 use File::Basename;                          # included with perl

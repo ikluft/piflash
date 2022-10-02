@@ -260,18 +260,24 @@ sub extract_zip
             PiFlash::Command::prog("mkdir"),
             "-p", $mntdir
         );
+
+        # mount filesystem to unarchive NOOBS into it, then try/catch exceptions so it won't prevent unmounting
         PiFlash::Command::cmd(
             "mount SD card",
             PiFlash::Command::prog("sudo"),
             PiFlash::Command::prog("mount"),
             "-t", $fstype, "LABEL=$label", $mntdir
         );
-        PiFlash::Command::cmd(
-            "unzip NOOBS contents",
-            PiFlash::Command::prog("sudo"),
-            PiFlash::Command::prog("unzip"),
-            "-d", $mntdir, PiFlash::State::input("path")
-        );
+        try {
+            PiFlash::Command::cmd(
+                "unzip NOOBS contents",
+                PiFlash::Command::prog("sudo"),
+                PiFlash::Command::prog("unzip"),
+                "-d", $mntdir, PiFlash::State::input("path")
+            );
+        } catch {
+            carp "continuing after NOOBS unarchive failed: $_";
+        };
         PiFlash::Command::cmd(
             "unmount SD card",
             PiFlash::Command::prog("sudo"),
@@ -409,7 +415,7 @@ sub flash_device
                     PiFlash::Command::cmd2str(
                         \@sfdisk_resize_input,          "resize partition",
                         PiFlash::Command::prog("sudo"), PiFlash::Command::prog("sfdisk"),
-                        "--quiet",                      "--no-reread",
+                        "--quiet",
                         "-N",                           $num_root,
                         PiFlash::State::output("path")
                     );
@@ -430,17 +436,33 @@ sub flash_device
                         PiFlash::Command::prog("mkdir"),
                         "-p", $mnt_root
                     );
-                    PiFlash::Command::cmd2str(
-                        "resize filesystem",
+
+                    say "- resizing the filesystem";
+                    # BTRFS requires mounting filesystem to resize it (up to partition size)
+                    # mount filesystem, then try/catch exceptions so it won't prevent unmounting
+                    PiFlash::Command::cmd(
+                        "mount root",
                         PiFlash::Command::prog("sudo"),
-                        PiFlash::Command::prog("btrfs"),
-                        qw(resize max), $mnt_root
+                        PiFlash::Command::prog("mount"),
+                        qw(-t btrfs), "/dev/$part_root", $mntdir
                     );
+                    try {
+                        PiFlash::Command::cmd2str(
+                            "resize filesystem",
+                            PiFlash::Command::prog("sudo"),
+                            PiFlash::Command::prog("btrfs"),
+                            qw(filesystem resize max), $mnt_root
+                        );
+                    } catch {
+                        carp "continuing without resize after root BTRFS filesystem resize failed: $_";
+                    };
                     PiFlash::Command::cmd(
                         "unmount root fs",
                         PiFlash::Command::prog("sudo"),
                         PiFlash::Command::prog("umount"), $mnt_root
                     );
+
+                    # make system re-read partition table after changes
                     reread_pt("resize $fstype_root");    # re-read partition table, use multiple tries if necessary
                 } else {
                     carp "unrecognized filesystem type $fstype_root - resize not attempted";
@@ -472,29 +494,43 @@ sub flash_device
                 PiFlash::Command::prog("mkdir"),
                 "-p", $mnt_root
             );
-            PiFlash::Command::cmd(
-                "mount boot fs",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("mount"),
-                "-t", $fstype_boot, $dev_boot, $mnt_boot
-            );
-            PiFlash::Command::cmd(
-                "mount root fs",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("mount"),
-                "-t", $fstype_root, $dev_root, $mnt_root
-            );
-            PiFlash::Hook::fs_mount( { boot => $mnt_boot, root => $mnt_root } );
-            PiFlash::Command::cmd(
-                "unmount root fs",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("umount"), $mnt_root
-            );
-            PiFlash::Command::cmd(
-                "unmount boot fs",
-                PiFlash::Command::prog("sudo"),
-                PiFlash::Command::prog("umount"), $mnt_boot
-            );
+
+            # mount boot/root filesystems, then try/catch exceptions so it won't prevent unmounting
+            try {
+                PiFlash::Command::cmd(
+                    "mount boot fs",
+                    PiFlash::Command::prog("sudo"),
+                    PiFlash::Command::prog("mount"),
+                    "-t", $fstype_boot, $dev_boot, $mnt_boot
+                );
+                try {
+                    PiFlash::Command::cmd(
+                        "mount root fs",
+                        PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("mount"),
+                        "-t", $fstype_root, $dev_root, $mnt_root
+                    );
+                    try {
+                        PiFlash::Hook::fs_mount( { boot => $mnt_boot, root => $mnt_root } );
+                    } catch {
+                        carp "continuing after exception in fs_mount hook: $_";
+                    };
+                    PiFlash::Command::cmd(
+                        "unmount root fs",
+                        PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("umount"), $mnt_root
+                    );
+                    PiFlash::Command::cmd(
+                        "unmount boot fs",
+                        PiFlash::Command::prog("sudo"),
+                        PiFlash::Command::prog("umount"), $mnt_boot
+                    );
+                } catch {
+                    carp "continuing after exception mounting root for fs_mount hook: $_";
+                };
+            } catch {
+                carp "continuing after exception mounting boot for fs_mount hook: $_";
+            };
         }
     }
 

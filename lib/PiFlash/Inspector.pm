@@ -59,23 +59,27 @@ Readonly::Array my @known_suffixes => qw(gz zip xz img);
 # prefix for functions to process specific file types for embedded boot images
 Readonly::Scalar my $process_func_prefix => "process_file_";
 
+# These regex patterns are meant to contain spaces to match libmagic output
+## no critic (RegularExpressions::RequireExtendedFormatting)
+
 # list of libmagic file strings corellated to file type strings as pairs
 Readonly::Array my @magic_to_type => (
-    [ qr(^Zip archive data)ix,     "zip" ],
-    [ qr(^gzip compressed data)ix, "gz" ],
-    [ qr(^XZ compressed data)ix,   "xz" ],
-    [ qr(^DOS\/MBR boot sector)ix, "img" ],
+    [ qr(^Zip archive data)i,     "zip" ],
+    [ qr(^gzip compressed data)i, "gz" ],
+    [ qr(^XZ compressed data)i,   "xz" ],
+    [ qr(^DOS\/MBR boot sector)i, "img" ],
 );
 
 # list of libmagic file strings corellated to filesystems as pairs
 # a code of 1 means use $1 from regex match, and convert it to lower case
 Readonly::Array my @magic_to_fs => (
-    [ qr(^Linux rev \d+.\d+ (ext[234]) filesystem data,)ix,                 1 ],
-    [ qr(^(\w+) Filesystem)ix,                                              1 ],
-    [ qr(\s+(\w+)\sfilesystem)ix,                                           1 ],
-    [ qr(^DOS\/MBR boot sector, .*, OEM-ID "mkfs.fat",.*, FAT (32 bit),)ix, "vfat" ],
-    [ qr(^Linux\/\w+ swap file)ix,                                          "swap" ],
+    [ qr(^Linux rev \d+.\d+ (ext[234]) filesystem data,)i, 1 ],
+    [ qr(^(\w+) Filesystem)i,                              1 ],
+    [ qr(\s+(\w+)\sfilesystem)i,                           1 ],
+    [ qr(^DOS\/MBR boot sector, .*, FAT (32 bit),)i,       "vfat" ],
+    [ qr(^Linux\/\w+ swap file)i,                          "swap" ],
 );
+## critic (RegularExpressions::RequireExtendedFormatting)
 
 # block device parameters to collect via lsblk
 Readonly::Array my @blkdev_params => qw(MOUNTPOINT FSTYPE SIZE SUBSYSTEMS TYPE MODEL RO RM HOTPLUG PHY-SEC);
@@ -270,12 +274,15 @@ sub collect_file_info
         fileparse( $input->{path}, map { "." . $_ } @known_suffixes );
 
     # use libmagic/file to determine file type from contents
-    say "input file is a " . $input->{info}{description};
+    PiFlash::State::verbose() and say STDERR "input file is a " . $input->{info}{description};
     foreach my $m2t_pair (@magic_to_type) {
+        my ( $regex, $type_str) = @$m2t_pair;
+        PiFlash::State::verbose() and say STDERR "collect_file_info: check $regex";
 
         # @magic_to_type constant contains pairs of regex (to match libmagic) and file type string if matched
-        if ( $input->{info}{description} =~ $m2t_pair->[0] ) {
-            $input->{type} = $m2t_pair->[1];
+        if ( $input->{info}{description} =~ $regex ) {
+            $input->{type} = $type_str;;
+            PiFlash::State::verbose() and say STDERR "collect_file_info: input type = ".$input->{type};
             last;
         }
     }
@@ -318,7 +325,10 @@ sub collect_device_info
     }
     if ( ( not exists $output->{fstype} ) or $output->{fstype} =~ /^\s*$/x ) {
 
-        # workaround for apparent bug in lsblk in util-linux which omits requested FSTYPE data
+        # multi-pronged approach to find fstype on output device
+        # lsblk in util-linux reads filesystem type but errors out for blank drive, which we must allow
+        # blkid can detect a disk or partition - we allow disks but not partitions for output device
+        # libmagic can describe the device if all else fails
         $output->{fstype} = get_fstype( $output->{path} ) // "";
     }
     if ( $output->{fstype} eq "swap" ) {
@@ -406,7 +416,7 @@ sub is_sd
     if ( $blkdev->{model} eq "SD/MMC" ) {
 
         # detected SD card via USB adapter
-        PiFlash::State::verbose() and say "output device " . $blkdev->{path} . " is an SD card via USB adapter";
+        PiFlash::State::verbose() and say STDERR "output device " . $blkdev->{path} . " is an SD card via USB adapter";
         return 1;
     }
 
@@ -435,7 +445,7 @@ sub is_sd
         }
         my $sysfs_devtype = slurp($sysfs_devtype_path);
         chomp $sysfs_devtype;
-        PiFlash::State::verbose() and say "output device " . $blkdev->{path} . " is a $sysfs_devtype";
+        PiFlash::State::verbose() and say STDERR "output device " . $blkdev->{path} . " is a $sysfs_devtype";
         if ( $sysfs_devtype eq "SD" ) {
             return 1;
         }
@@ -447,12 +457,13 @@ sub is_sd
     if ($found_usb) {
         if ( $blkdev->{ro} == 0 and $blkdev->{rm} == 1 and $blkdev->{hotplug} == 1 and $blkdev->{"phy-sec"} == 512 ) {
             PiFlash::State::verbose()
-                and say "output device " . $blkdev->{path} . " close enough: USB removable writable hotplug ps=512";
+                and say STDERR "output device " . $blkdev->{path}
+                    . " close enough: USB removable writable hotplug ps=512";
             return 1;
         }
     }
 
-    PiFlash::State::verbose() and say "output device " . $blkdev->{path} . " rejected as SD card";
+    PiFlash::State::verbose() and say STDERR "output device " . $blkdev->{path} . " rejected as SD card";
     return 0;
 }
 
@@ -511,16 +522,22 @@ sub get_fstype
             PiFlash::Command::prog("lsblk"),
             "--nodeps", "--noheadings", "--output", "FSTYPE", $devpath
         );
+    } catch {
+        undef $fstype;
     };
 
     # fallback: use blkid
     if ( ( not defined $fstype ) or $fstype =~ /^\s*$/x ) {
-        $fstype = PiFlash::Command::cmd2str(
-            "use blkid to get fs type for $devpath",
-            PiFlash::Command::prog("sudo"),
-            PiFlash::Command::prog("blkid"),
-            "--probe", "--output=value", "--match-tag=TYPE", $devpath
-        );
+        try {
+            $fstype = PiFlash::Command::cmd2str(
+                "use blkid to get fs type for $devpath",
+                PiFlash::Command::prog("sudo"),
+                PiFlash::Command::prog("blkid"),
+                "--probe", "--output=value", "--match-tag=TYPE", $devpath
+            );
+        } catch {
+            undef $fstype;
+        };
     }
 
     # fallback 2: use File::LibMagic as backup filesystem type lookup
@@ -531,7 +548,7 @@ sub get_fstype
         my $magic_data = $magic->info_from_filename($devpath);
         if ( PiFlash::State::verbose() ) {
             for my $key ( keys %$magic_data ) {
-                say "get_fstype: magic_data/$key = " . $magic_data->{$key};
+                say STDERR "get_fstype: magic_data/$key = " . $magic_data->{$key};
             }
         }
 
@@ -539,8 +556,13 @@ sub get_fstype
         foreach my $m2f_pair (@magic_to_fs) {
 
             # @magic_to_fs constant contains pairs of regex (to match libmagic) and filesystem if matched
+            PiFlash::State::verbose() and say STDERR "get_fstype: check ".$m2f_pair->[0];
             if ( $magic_data->{description} =~ $m2f_pair->[0] ) {
-                $fstype = $m2f_pair->[1];
+                if ( $m2f_pair->[1] == 1 ) {
+                    $fstype = $1;
+                } else {
+                    $fstype = $m2f_pair->[1];
+                }
                 last;
             }
         }
@@ -548,7 +570,7 @@ sub get_fstype
 
     # return filesystem type string, or undef if not determined
     defined $fstype and chomp $fstype;
-    PiFlash::State::verbose() and say "get_fstype($devpath) = " . ( $fstype // "undef" );
+    PiFlash::State::verbose() and say STDERR "get_fstype($devpath) = " . ( $fstype // "undef" );
     return $fstype;
 }
 

@@ -153,7 +153,7 @@ sub init
 sub get_state
 {
     my ( $caller_package, $filename, $line ) = caller;
-    if ( $caller_package ne __PACKAGE__ ) {
+    if ( $caller_package ne __PACKAGE__ and $caller_package ne "PiFlash" ) {
         croak __PACKAGE__ . " internal-use-only method called by $caller_package at $filename line $line";
     }
     return __PACKAGE__->instance();

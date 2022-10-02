@@ -7,7 +7,6 @@
 use strict;
 use warnings;
 use utf8;
-use 5.01400;    # require 2011 or newer version of Perl
 ## use critic (Modules::RequireExplicitPackage)
 
 package PiFlash::Hook;

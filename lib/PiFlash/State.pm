@@ -10,7 +10,6 @@
 use strict;
 use warnings;
 use utf8;
-use 5.01400;    # require 2011 or newer version of Perl
 ## use critic (Modules::RequireExplicitPackage)
 
 # State class to hold program state, and print it all out in case of errors

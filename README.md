@@ -24,7 +24,7 @@ March 15, 2019
 
 # Description
 
-This script writes (or "flashes") an SD card for a Raspberry Pi. It includes safety checks so that it can only erase and write to an SD card, not another device on the system. The safety checks are probably of most use to beginners. For more advanced users (like the author) it also has the convenience of flashing directly from the file formats downloadable from raspberrypi.org without extracting a .img file from a zip/gz/xz file.
+PiFlash writes (or "flashes") an SD card for a Raspberry Pi. It includes safety checks so that it can only erase and write to an SD card, not another device on the system. The safety checks are probably of most use to beginners. For more advanced users (like the author) it also has the convenience of flashing directly from the file formats downloadable from raspberrypi.org without extracting a .img file from a zip/gz/xz file.
 
 ## User documentation
 
@@ -35,8 +35,12 @@ This script writes (or "flashes") an SD card for a Raspberry Pi. It includes saf
 * [PiFlash release on CPAN](https://metacpan.org/release/PiFlash)
 * [PiFlash source code on GitHub](https://github.com/ikluft/piflash)
 
-PiFlash documentation is available as POD.
-Once installed, you can run `perldoc` from a shell to read the documentation:
+PiFlash documentation is available as Unix man-pages and as Perl POD (Plain Old Documentation).
+Once installed, you can run `man` or `perldoc` from a shell to read the documentation:
+
+    % man piflash
+
+or
  
     % perldoc piflash
  

@@ -444,7 +444,7 @@ sub flash_device
                         "mount root",
                         PiFlash::Command::prog("sudo"),
                         PiFlash::Command::prog("mount"),
-                        qw(-t btrfs), "/dev/$part_root", $mntdir
+                        qw(-t btrfs), "/dev/$part_root", $mnt_root
                     );
                     try {
                         PiFlash::Command::cmd2str(

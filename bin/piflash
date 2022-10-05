@@ -28,7 +28,7 @@ The "piflash" program writes (or "flashes") an SD card for a Raspberry Pi single
 The optional parameter --verbose makes much more verbose status and error messages.  Use this when troubleshooting any problem or preparing program output to ask for help or report a bug.
 
 =item *
-The optional parameter --resize may be used when writing to an SD card. After writing, it attempts to find the root filesystem on the SD card and resizes it to take the remainder of the free space on the device. This has been tested to work with the popular OS distributions and how they set up their partitions on installation. (However, in case any distributions make changes, please report any errors so they can be fixed.)
+The optional parameter --resize may be used when writing to an SD card. After writing, it attempts to find the root filesystem on the SD card and resizes it to take the remainder of the free space on the device. This has been tested to work with the popular OS distributions and how they set up their partitions on installation. (However, in case any distributions make changes, please report any errors so they can be fixed.) Currently resizing of Ext2/3/4 and BTRFS filesystems is supported.
 
 =item *
 input-file is the path of the binary image file used as input for flashing the SD card. If it's a .img file then it will be flashed directly. If it's a gzip (.gz), xz (.xz) or zip (.zip) file then the .img file will be extracted from it to flash the SD card. It is not necessary to unpack the file if it's in one of these formats. This covers most of the images downloadable from the Raspberry Pi foundation's web site.
@@ -78,7 +78,7 @@ For most disk images, either in a raw *.img file, compressed in a *.gz or *.xz f
 For zip archives, it checks if it contains the Raspberry Pi NOOBS (New Out Of the Box System), in which case it handles it differently. The steps it takes are similar to the instructions that one would have to follow manually.  It formats a new VFAT filesystem on the card. (FAT/VFAT is the only format recognized by the Raspberry Pi's simple boot loader.) Then it copies the contents of the zip archive into the card, automating the entire flashing process even for a NOOBS system, which previously didn't even have instructions to be done from Linux systems.
 
 =item *
-When the --resize option is provided, it requests piflash to resize the root filesystem to the maximum available size of the SD card. It's ignored for NOOBS because it will wipe out the initial partitions upong installing anything else. In all other cases, it will expand the last filesystem on the SD card, which is traditionally where the root filesystem is placed. (Exceptions may be added if needed for distributions which don't follow this layout.)
+When the --resize option is provided, it requests piflash to resize the root filesystem to the maximum available size of the SD card. It's ignored for NOOBS because it will wipe out the initial partitions upong installing anything else. In all other cases, it will expand the last filesystem on the SD card, which is traditionally where the root filesystem is placed. (Exceptions may be added if needed for distributions which don't follow this layout.) Currently resizing of Ext2/3/4 and BTRFS filesystems is supported.
 
 =back
 
